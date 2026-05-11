@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import json
@@ -26,6 +27,26 @@ claude = anthropic.Anthropic(
     base_url=CLAUDE_BASE_URL,
     http_client=httpx.Client(trust_env=False),
 )
+
+MINIAPP_URL = os.environ.get("MINIAPP_URL", "https://web-production-16962.up.railway.app")
+
+# ── Telegram уведомления ──────────────────────────────────────────────────────
+async def send_tg_notification(user_id: int, text: str):
+    """Отправляет сообщение пользователю через Telegram Bot API."""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": user_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "reply_markup": json.dumps({"inline_keyboard": [[
+                {"text": "💎 Пополнить баланс", "web_app": {"url": MINIAPP_URL}}
+            ]]})
+        }
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload, timeout=5)
+    except Exception:
+        pass
 
 # ── FastAPI ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Jingpt API")
@@ -173,7 +194,24 @@ async def api_chat(req: ChatRequest):
     await db.save_message(req.user_id, "assistant", assistant_text)
 
     updated = await db.get_user(req.user_id)
-    return {"response": assistant_text, "balance": updated["balance"]}
+    balance = updated["balance"]
+
+    # Уведомления о балансе
+    if balance == 0:
+        asyncio.create_task(send_tg_notification(
+            req.user_id,
+            "⚠️ <b>Баланс закончился!</b>\n\n"
+            "У вас не осталось запросов.\n"
+            "Пополните баланс, чтобы продолжить общение с Jingpt 👇"
+        ))
+    elif balance == 3:
+        asyncio.create_task(send_tg_notification(
+            req.user_id,
+            f"💎 <b>Осталось {balance} запроса</b>\n\n"
+            "Скоро баланс закончится — пополните заранее, чтобы не прерываться 👇"
+        ))
+
+    return {"response": assistant_text, "balance": balance}
 
 
 # ── Админка ───────────────────────────────────────────────────────────────────
