@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jingpt Admin</title>
+  <style>
+    :root {
+      --bg: #0f0f11; --bg2: #1a1a1f; --bg3: #25252d;
+      --text: #fafafa; --muted: #71717a;
+      --accent: #6366f1; --green: #22c55e; --red: #ef4444; --yellow: #f59e0b;
+      --border: #2e2e38; --radius: 12px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── Шапка ── */
+    header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #fff; }
+    .logo-name { font-size: 18px; font-weight: 800; }
+    .logo-badge { font-size: 11px; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 8px; margin-left: 6px; }
+    #login-form { display: flex; gap: 8px; }
+    #password-input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 14px; outline: none; width: 180px; }
+    #password-input:focus { border-color: var(--accent); }
+
+    /* ── Кнопки ── */
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+    .btn:active { transform: scale(.96); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-green  { background: var(--green);  color: #fff; }
+    .btn-sm     { padding: 5px 12px; font-size: 13px; }
+    .btn:hover  { opacity: .88; }
+
+    /* ── Контент ── */
+    main { max-width: 1000px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 24px; }
+
+    /* ── Статы ── */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+    .stat-card .s-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card .s-value { font-size: 32px; font-weight: 800; margin-top: 6px; }
+    .stat-card .s-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .s-value.green  { color: var(--green); }
+    .s-value.accent { color: var(--accent); }
+    .s-value.yellow { color: var(--yellow); }
+
+    /* ── Пополнение ── */
+    .topup-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .topup-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+    .topup-form { display: flex; gap: 10px; flex-wrap: wrap; }
+    .topup-form input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; color: var(--text); font-size: 14px; outline: none; flex: 1; min-width: 120px; }
+    .topup-form input:focus { border-color: var(--accent); }
+    .topup-form input::placeholder { color: var(--muted); }
+    #topup-result { font-size: 13px; margin-top: 10px; min-height: 20px; }
+    .ok  { color: var(--green); }
+    .err { color: var(--red); }
+
+    /* ── Таблица пользователей ── */
+    .users-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .users-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .users-header h2 { font-size: 15px; font-weight: 700; }
+    #search { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 13px; outline: none; width: 200px; }
+    #search:focus { border-color: var(--accent); }
+    #search::placeholder { color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 20px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 20px; font-size: 14px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg3); }
+
+    .balance-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .balance-chip.ok   { background: rgba(34,197,94,.15);  color: var(--green); }
+    .balance-chip.low  { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .balance-chip.zero { background: rgba(239,68,68,.15);  color: var(--red); }
+
+    .user-id { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .user-date { font-size: 12px; color: var(--muted); }
+
+    /* ── Пусто / загрузка ── */
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .locked { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+    .locked-box { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .locked-box .lock-icon { font-size: 56px; }
+    .locked-box p { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">J</div>
+    <span class="logo-name">Jingpt</span>
+    <span class="logo-badge">Admin</span>
+  </div>
+  <div id="login-form">
+    <input type="password" id="password-input" placeholder="Пароль" />
+    <button class="btn btn-accent" onclick="login()">Войти</button>
+  </div>
+</header>
+
+<main id="main-content" style="display:none">
+
+  <!-- Статистика -->
+  <div class="stats" id="stats">
+    <div class="stat-card">
+      <div class="s-label">Пользователей</div>
+      <div class="s-value accent" id="stat-users">—</div>
+      <div class="s-sub">всего в базе</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Запросов</div>
+      <div class="s-value green" id="stat-messages">—</div>
+      <div class="s-sub">всего сделано</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Баланс (сумма)</div>
+      <div class="s-value yellow" id="stat-balance">—</div>
+      <div class="s-sub">запросов у пользователей</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Без баланса</div>
+      <div class="s-value" style="color:var(--red)" id="stat-zero">—</div>
+      <div class="s-sub">нужно пополнение</div>
+    </div>
+  </div>
+
+  <!-- Пополнение баланса -->
+  <div class="topup-card">
+    <h2>➕ Пополнить баланс пользователю</h2>
+    <div class="topup-form">
+      <input type="number" id="topup-id" placeholder="Telegram ID пользователя" />
+      <input type="number" id="topup-amount" placeholder="Кол-во запросов" min="1" value="10" />
+      <button class="btn btn-green" onclick="topupBalance()">Пополнить</button>
+    </div>
+    <div id="topup-result"></div>
+  </div>
+
+  <!-- Таблица пользователей -->
+  <div class="users-card">
+    <div class="users-header">
+      <h2>👥 Пользователи</h2>
+      <input type="text" id="search" placeholder="Поиск по имени или ID..." oninput="filterUsers()" />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Пользователь</th>
+          <th>Telegram ID</th>
+          <th>Баланс</th>
+          <th>Регистрация</th>
+          <th>Действие</th>
+        </tr>
+      </thead>
+      <tbody id="users-table"></tbody>
+    </table>
+    <div class="empty" id="empty-msg" style="display:none">Пользователи не найдены</div>
+  </div>
+
+</main>
+
+<!-- Заблокировано -->
+<div class="locked" id="locked-screen">
+  <div class="locked-box">
+    <div class="lock-icon">🔒</div>
+    <h2>Панель администратора</h2>
+    <p>Введите пароль для доступа</p>
+  </div>
+</div>
+
+<script>
+const API = '';
+let ADMIN_PASSWORD = '';
+let allUsers = [];
+
+// ── Вход ──────────────────────────────────────────────────────────────────────
+function login() {
+  const pw = document.getElementById('password-input').value.trim();
+  if (!pw) return;
+  ADMIN_PASSWORD = pw;
+  loadData();
+}
+
+document.getElementById('password-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+
+// ── Загрузка данных ───────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const res = await fetch(`${API}/api/admin/stats`, {
+      headers: { 'X-Admin-Password': ADMIN_PASSWORD }
+    });
+    if (res.status === 403) { alert('Неверный пароль'); return; }
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+
+    // Показываем контент
+    document.getElementById('locked-screen').style.display = 'none';
+    document.getElementById('main-content').style.display = 'flex';
+    document.getElementById('login-form').style.display = 'none';
+
+    // Статистика
+    document.getElementById('stat-users').textContent    = data.total_users;
+    document.getElementById('stat-messages').textContent = data.total_messages;
+    document.getElementById('stat-balance').textContent  = data.total_balance;
+    document.getElementById('stat-zero').textContent     = data.zero_balance;
+
+    // Пользователи
+    allUsers = data.users;
+    renderUsers(allUsers);
+  } catch(e) {
+    alert('Ошибка загрузки');
+  }
+}
+
+// ── Рендер таблицы ─────────────────────────────────────────────────────────────
+function renderUsers(users) {
+  const tbody = document.getElementById('users-table');
+  const empty = document.getElementById('empty-msg');
+
+  if (!users.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = users.map(u => {
+    const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
+    const username = u.username ? `@${u.username}` : '';
+    const date = new Date(u.created_at).toLocaleDateString('ru');
+    const balClass = u.balance === 0 ? 'zero' : u.balance <= 3 ? 'low' : 'ok';
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:600">${name}</div>
+          <div style="font-size:12px;color:var(--muted)">${username}</div>
+        </td>
+        <td><span class="user-id">${u.user_id}</span></td>
+        <td><span class="balance-chip ${balClass}">💎 ${u.balance}</span></td>
+        <td><span class="user-date">${date}</span></td>
+        <td>
+          <button class="btn btn-green btn-sm" onclick="quickTopup(${u.user_id})">+10</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Поиск ─────────────────────────────────────────────────────────────────────
+function filterUsers() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtered = allUsers.filter(u =>
+    (u.first_name || '').toLowerCase().includes(q) ||
+    (u.last_name  || '').toLowerCase().includes(q) ||
+    (u.username   || '').toLowerCase().includes(q) ||
+    String(u.user_id).includes(q)
+  );
+  renderUsers(filtered);
+}
+
+// ── Пополнение ────────────────────────────────────────────────────────────────
+async function topupBalance() {
+  const userId = document.getElementById('topup-id').value.trim();
+  const amount = parseInt(document.getElementById('topup-amount').value);
+  const result = document.getElementById('topup-result');
+
+  if (!userId || !amount || amount < 1) {
+    result.textContent = '⚠️ Укажите ID и количество запросов';
+    result.className = 'err';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/api/admin/topup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
+      body: JSON.stringify({ user_id: parseInt(userId), amount }),
+    });
+    if (res.status === 404) { result.textContent = '❌ Пользователь не найден'; result.className = 'err'; return; }
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    result.textContent = `✅ Готово! Новый баланс: ${data.new_balance} запросов`;
+    result.className = 'ok';
+    loadData();
+  } catch(e) {
+    result.textContent = '❌ Ошибка запроса';
+    result.className = 'err';
+  }
+}
+
+async function quickTopup(userId) {
+  try {
+    const res = await fetch(`${API}/api/admin/topup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
+      body: JSON.stringify({ user_id: userId, amount: 10 }),
+    });
+    if (!res.ok) throw new Error();
+    loadData();
+  } catch(e) { alert('Ошибка'); }
+}
+</script>
+</body>
+</html>

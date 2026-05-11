@@ -1,11 +1,12 @@
 import hashlib
 import hmac
 import json
+import os
 from urllib.parse import parse_qsl
 
 import httpx
 import anthropic
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -14,8 +15,9 @@ from pydantic import BaseModel
 import database as db
 
 # ── Настройки ────────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY  = "sk-hub-9iH9yudgwhmrpsB1guWQu2MEfT200hRx"
-TELEGRAM_BOT_TOKEN = "8563490950:AAHNoSzdlubomAUPk1M_JG4s8v690ciTNLk"
+ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "sk-hub-9iH9yudgwhmrpsB1guWQu2MEfT200hRx")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN",   "8563490950:AAHNoSzdlubomAUPk1M_JG4s8v690ciTNLk")
+ADMIN_PASSWORD     = os.environ.get("ADMIN_PASSWORD",   "jingpt_admin_2024")
 CLAUDE_MODEL       = "claude-opus-4-7"
 CLAUDE_BASE_URL    = "https://api.claudehub.fun"
 
@@ -173,6 +175,49 @@ async def api_chat(req: ChatRequest):
     updated = await db.get_user(req.user_id)
     return {"response": assistant_text, "balance": updated["balance"]}
 
+
+# ── Админка ───────────────────────────────────────────────────────────────────
+def check_admin(request: Request):
+    pw = request.headers.get("X-Admin-Password", "")
+    if pw != ADMIN_PASSWORD:
+        raise HTTPException(403, "Forbidden")
+
+class TopupRequest(BaseModel):
+    user_id: int
+    amount:  int
+
+@app.get("/api/admin/stats")
+async def admin_stats(request: Request):
+    check_admin(request)
+    async with __import__("aiosqlite").connect(db.DB_PATH) as conn:
+        conn.row_factory = __import__("aiosqlite").Row
+        async with conn.execute("SELECT COUNT(*) as c FROM users") as cur:
+            total_users = (await cur.fetchone())["c"]
+        async with conn.execute("SELECT COUNT(*) as c FROM messages WHERE role='user'") as cur:
+            total_messages = (await cur.fetchone())["c"]
+        async with conn.execute("SELECT COALESCE(SUM(balance),0) as s FROM users") as cur:
+            total_balance = (await cur.fetchone())["s"]
+        async with conn.execute("SELECT COUNT(*) as c FROM users WHERE balance=0") as cur:
+            zero_balance = (await cur.fetchone())["c"]
+        async with conn.execute("SELECT * FROM users ORDER BY created_at DESC") as cur:
+            users = [dict(r) for r in await cur.fetchall()]
+    return {
+        "total_users":    total_users,
+        "total_messages": total_messages,
+        "total_balance":  total_balance,
+        "zero_balance":   zero_balance,
+        "users":          users,
+    }
+
+@app.post("/api/admin/topup")
+async def admin_topup(request: Request, req: TopupRequest):
+    check_admin(request)
+    user = await db.get_user(req.user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    await db.add_balance(req.user_id, req.amount)
+    updated = await db.get_user(req.user_id)
+    return {"new_balance": updated["balance"]}
 
 # ── Статические файлы Mini App ─────────────────────────────────────────────────
 app.mount("/miniapp", StaticFiles(directory="miniapp", html=True), name="miniapp")
