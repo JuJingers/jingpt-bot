@@ -35,7 +35,17 @@
 
     /* ── Сброс ───────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+    html { height: 100%; background: var(--bg); }
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      /* iOS fix */
+      position: fixed;
+      width: 100%;
+    }
 
     /* ── Экраны ──────────────────────────────────────────────────────────── */
     .screen { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity .25s, transform .25s; }
@@ -139,6 +149,7 @@
     .input-area {
       display: flex; align-items: flex-end; gap: 8px;
       padding: 10px 12px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
       border-top: 1px solid var(--border);
       background: var(--bg);
       flex-shrink: 0;
@@ -562,6 +573,16 @@ async function sendMessage() {
 // ── Покупка (заглушка до подключения ЮКассы) ────────────────────────────────
 function buyPackage(requests, price) {
   tg?.showAlert(`Оплата ${price} ₽ за ${requests} запросов.\n\nФункция оплаты будет добавлена в следующем обновлении.\n\nПо вопросам: @DadaYaKiruha`);
+}
+
+// ── iOS viewport fix ─────────────────────────────────────────────────────────
+function fixViewport() {
+  const h = tg?.viewportStableHeight || window.innerHeight;
+  document.body.style.height = h + 'px';
+}
+if (tg) {
+  tg.onEvent('viewportChanged', fixViewport);
+  fixViewport();
 }
 
 // ── Старт ────────────────────────────────────────────────────────────────────
