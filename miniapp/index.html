@@ -63,12 +63,11 @@
     #splash.hide { animation: splashOut .4s forwards; }
     .splash-logo {
       width: 96px; height: 96px; border-radius: 26px;
-      background: linear-gradient(135deg, #6366f1, #a78bfa);
-      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
       box-shadow: 0 16px 48px rgba(99,102,241,.4);
       animation: pulse 2s ease-in-out infinite;
     }
-    .splash-logo span { font-size: 52px; font-weight: 900; color: #fff; line-height: 1; }
+    .splash-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .splash-name { font-size: 34px; font-weight: 900; letter-spacing: -1px; background: linear-gradient(135deg, #6366f1, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .splash-loader { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin-top: 8px; }
 
@@ -97,7 +96,7 @@
       box-shadow: 0 12px 40px rgba(99,102,241,.38);
       animation: fadeIn .6s ease both;
     }
-    .logo-wrap span { font-size: 50px; font-weight: 900; color: #fff; line-height: 1; }
+    .logo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 24px; }
     .logo-name {
       font-size: 34px; font-weight: 900; letter-spacing: -1px;
       background: linear-gradient(135deg, #6366f1, #a78bfa);
@@ -154,7 +153,7 @@
       background: linear-gradient(135deg, #6366f1, #a78bfa);
       display: flex; align-items: center; justify-content: center;
     }
-    .header-logo span { font-size: 20px; font-weight: 900; color: #fff; line-height: 1; }
+    .header-logo img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 10px; }
     .header-title { flex: 1; }
     .header-title h1 { font-size: 16px; font-weight: 700; }
     .header-title span { font-size: 12px; color: var(--text-muted); }
@@ -379,7 +378,7 @@
 
 <!-- ── СПЛЭШ ────────────────────────────────────────────────────────────── -->
 <div id="splash">
-  <div class="splash-logo"><span>J</span></div>
+  <div class="splash-logo"><img src="logo.png" alt="Jingpt" /></div>
   <div class="splash-name">Jingpt</div>
   <div class="splash-loader"></div>
 </div>
@@ -387,7 +386,7 @@
 <!-- ── ЛЕНДИНГ ──────────────────────────────────────────────────────────── -->
 <div id="landing" class="screen hidden">
   <div class="landing-top">
-    <div class="logo-wrap"><span>J</span></div>
+    <div class="logo-wrap"><img src="logo.png" alt="Jingpt" /></div>
     <div class="logo-name">Jingpt</div>
     <div class="logo-tagline">Powered by Claude Opus 4.7</div>
 
@@ -418,7 +417,7 @@
 <!-- ── ЧАТ ──────────────────────────────────────────────────────────────── -->
 <div id="chat" class="screen hidden">
   <div class="chat-header">
-    <div class="header-logo"><span>J</span></div>
+    <div class="header-logo"><img src="logo.png" alt="Jingpt" /></div>
     <div class="header-title">
       <h1>Jingpt</h1>
       <span>Claude Opus 4.7</span>
