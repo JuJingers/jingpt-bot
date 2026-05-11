@@ -4,9 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Jingpt</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236366f1'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' dominant-baseline='middle' dy='.05em'>J</text></svg>">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    /* ── Переменные темы ─────────────────────────────────────────────────── */
+    /* ── Переменные темы ──────────────────────────────────────────────────── */
     :root {
       --bg:           #ffffff;
       --bg-secondary: #f4f4f5;
@@ -17,7 +18,6 @@
       --bubble-user:  #6366f1;
       --bubble-bot:   #f4f4f5;
       --border:       #e4e4e7;
-      --shadow:       rgba(0,0,0,.08);
       --input-bg:     #f4f4f5;
       --radius:       16px;
     }
@@ -29,121 +29,196 @@
       --bubble-user:  #6366f1;
       --bubble-bot:   #27272a;
       --border:       #3f3f46;
-      --shadow:       rgba(0,0,0,.3);
       --input-bg:     #27272a;
     }
 
-    /* ── Сброс ───────────────────────────────────────────────────────────── */
+    /* ── Сброс ────────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { height: 100%; background: var(--bg); }
     body {
-      height: 100%;
-      overflow: hidden;
+      height: 100%; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      /* iOS fix */
-      position: fixed;
-      width: 100%;
+      background: var(--bg); color: var(--text);
+      position: fixed; width: 100%;
     }
 
-    /* ── Экраны ──────────────────────────────────────────────────────────── */
-    .screen { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity .25s, transform .25s; }
-    .screen.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+    /* ── Анимации ─────────────────────────────────────────────────────────── */
+    @keyframes fadeIn    { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    @keyframes pulse     { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    @keyframes bounce    { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+    @keyframes spin      { to { transform: rotate(360deg); } }
+    @keyframes msgIn     { from { opacity: 0; transform: scale(.92) translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes splashOut { to { opacity: 0; pointer-events: none; } }
+
+    /* ── Сплэш ────────────────────────────────────────────────────────────── */
+    #splash {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      transition: opacity .4s ease;
+    }
+    #splash.hide { animation: splashOut .4s forwards; }
+    .splash-logo {
+      width: 96px; height: 96px; border-radius: 26px;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 16px 48px rgba(99,102,241,.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .splash-logo span { font-size: 52px; font-weight: 900; color: #fff; line-height: 1; }
+    .splash-name { font-size: 34px; font-weight: 900; letter-spacing: -1px; background: linear-gradient(135deg, #6366f1, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .splash-loader { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin-top: 8px; }
+
+    /* ── Экраны ───────────────────────────────────────────────────────────── */
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    .screen.hidden { opacity: 0; pointer-events: none; transform: translateY(16px); }
 
     /* ══════════════════════════════════════════════════════════════════════
        ЛЕНДИНГ
     ══════════════════════════════════════════════════════════════════════ */
     #landing {
-      align-items: center;
-      justify-content: space-between;
-      padding: 48px 24px 36px;
-      background: var(--bg);
+      align-items: center; justify-content: space-between;
+      padding: 48px 20px max(28px, env(safe-area-inset-bottom));
+      background: var(--bg); overflow-y: auto;
     }
-    .landing-top { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
-    .logo-wrap { width: 88px; height: 88px; border-radius: 24px; background: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(99,102,241,.35); }
-    .logo-wrap svg { width: 48px; height: 48px; fill: #fff; }
-    .logo-name { font-size: 32px; font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, var(--accent), #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .logo-tagline { font-size: 14px; color: var(--text-muted); text-align: center; }
+    .landing-top { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
 
-    .desc-card { width: 100%; background: var(--bg-secondary); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
-    .desc-card p { font-size: 15px; line-height: 1.6; color: var(--text); }
+    .logo-wrap {
+      width: 90px; height: 90px; border-radius: 24px;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 12px 40px rgba(99,102,241,.38);
+      animation: fadeIn .6s ease both;
+    }
+    .logo-wrap span { font-size: 50px; font-weight: 900; color: #fff; line-height: 1; }
+    .logo-name {
+      font-size: 34px; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: fadeIn .6s .1s ease both;
+    }
+    .logo-tagline { font-size: 13px; color: var(--text-muted); animation: fadeIn .6s .2s ease both; }
 
-    .contacts { width: 100%; display: flex; flex-direction: column; gap: 10px; }
-    .contact-item { display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); text-decoration: none; color: var(--text); }
+    .desc-card {
+      width: 100%; background: var(--bg-secondary);
+      border-radius: var(--radius); padding: 18px;
+      border: 1px solid var(--border);
+      animation: fadeIn .6s .3s ease both;
+    }
+    .desc-card p { font-size: 14px; line-height: 1.65; color: var(--text); }
+
+    .contacts { width: 100%; display: flex; flex-direction: column; gap: 10px; animation: fadeIn .6s .4s ease both; }
+    .contact-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg-secondary); border-radius: 12px;
+      padding: 13px 16px; border: 1px solid var(--border);
+      text-decoration: none; color: var(--text);
+      transition: transform .15s, background .15s;
+    }
+    .contact-item:active { transform: scale(.97); background: var(--border); }
     .contact-item .icon { font-size: 20px; }
     .contact-item .info { display: flex; flex-direction: column; }
     .contact-item .label { font-size: 11px; color: var(--text-muted); }
     .contact-item .value { font-size: 14px; font-weight: 600; }
 
-    .btn-primary { width: 100%; padding: 16px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .2s, transform .1s; }
-    .btn-primary:active { background: var(--accent-hover); transform: scale(.98); }
+    .btn-primary {
+      width: 100%; padding: 16px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 20px rgba(99,102,241,.35);
+      animation: fadeIn .6s .5s ease both;
+    }
+    .btn-primary:active { transform: scale(.97); box-shadow: none; }
 
     /* ══════════════════════════════════════════════════════════════════════
        ЧАТ
     ══════════════════════════════════════════════════════════════════════ */
     #chat { background: var(--bg); }
 
-    /* Хэдер */
     .chat-header {
       display: flex; align-items: center; gap: 12px;
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      flex-shrink: 0;
+      background: var(--bg); flex-shrink: 0;
     }
-    .header-logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
-    .header-logo svg { width: 20px; height: 20px; fill: #fff; }
+    .header-logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .header-logo span { font-size: 20px; font-weight: 900; color: #fff; line-height: 1; }
     .header-title { flex: 1; }
     .header-title h1 { font-size: 16px; font-weight: 700; }
     .header-title span { font-size: 12px; color: var(--text-muted); }
-    .balance-badge { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-    .balance-badge .gem { font-size: 14px; }
+    .balance-badge {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+      transition: transform .15s, background .15s;
+    }
+    .balance-badge:active { transform: scale(.95); background: var(--border); }
 
     /* Сообщения */
     #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      flex: 1; overflow-y: auto;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
       scroll-behavior: smooth;
     }
     #messages::-webkit-scrollbar { width: 0; }
 
-    .msg { display: flex; flex-direction: column; max-width: 82%; }
+    .msg { display: flex; flex-direction: column; max-width: 84%; animation: msgIn .25s ease both; }
     .msg.user { align-self: flex-end; align-items: flex-end; }
     .msg.assistant { align-self: flex-start; align-items: flex-start; }
 
     .bubble {
-      padding: 12px 16px;
-      border-radius: 18px;
-      font-size: 15px;
-      line-height: 1.55;
-      word-break: break-word;
-      white-space: pre-wrap;
+      padding: 11px 15px; border-radius: 18px;
+      font-size: 15px; line-height: 1.55;
+      word-break: break-word; white-space: pre-wrap;
     }
-    .msg.user .bubble { background: var(--bubble-user); color: #fff; border-bottom-right-radius: 4px; }
-    .msg.assistant .bubble { background: var(--bubble-bot); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg.user .bubble {
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      color: #fff; border-bottom-right-radius: 4px;
+      box-shadow: 0 2px 12px rgba(99,102,241,.25);
+    }
+    .msg.assistant .bubble {
+      background: var(--bubble-bot); color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
 
-    .file-preview { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.2); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
-    .file-preview img { max-width: 200px; max-height: 200px; border-radius: 10px; display: block; }
+    .file-preview img { max-width: 200px; max-height: 200px; border-radius: 12px; display: block; margin-bottom: 4px; }
+    .file-chip-msg { display: flex; align-items: center; gap: 6px; font-size: 13px; opacity: .85; margin-bottom: 4px; }
 
-    .msg-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
+    .msg-time { font-size: 11px; color: var(--text-muted); margin-top: 3px; padding: 0 3px; }
 
     /* Typing */
-    .typing { display: flex; align-items: center; gap: 4px; padding: 12px 16px; }
+    .typing { display: flex; align-items: center; gap: 5px; padding: 14px 16px; }
     .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce .9s infinite; }
     .typing span:nth-child(2) { animation-delay: .15s; }
     .typing span:nth-child(3) { animation-delay: .3s; }
-    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
 
     /* Пустой чат */
-    .empty-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-muted); padding: 24px; text-align: center; }
-    .empty-chat .big-icon { font-size: 48px; }
-    .empty-chat h2 { font-size: 18px; font-weight: 700; color: var(--text); }
-    .empty-chat p { font-size: 14px; line-height: 1.5; }
+    .empty-chat {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; color: var(--text-muted); padding: 24px; text-align: center;
+      animation: fadeInUp .5s ease both;
+    }
+    .empty-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 38px; margin-bottom: 4px;
+      box-shadow: 0 8px 24px rgba(99,102,241,.3);
+    }
+    .empty-chat h2 { font-size: 19px; font-weight: 700; color: var(--text); }
+    .empty-chat p { font-size: 14px; line-height: 1.55; max-width: 260px; }
 
     /* Поле ввода */
     .input-area {
@@ -151,82 +226,139 @@
       padding: 10px 12px;
       padding-bottom: max(10px, env(safe-area-inset-bottom));
       border-top: 1px solid var(--border);
-      background: var(--bg);
-      flex-shrink: 0;
+      background: var(--bg); flex-shrink: 0;
     }
-    .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--bg-secondary); color: var(--text-muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s; }
-    .icon-btn:hover { background: var(--border); }
+    .icon-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: var(--bg-secondary); color: var(--text-muted);
+      font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background .15s, transform .1s;
+    }
+    .icon-btn:active { transform: scale(.9); background: var(--border); }
     #file-input { display: none; }
-    .file-chip { display: flex; align-items: center; gap: 6px; background: var(--accent); color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; margin-bottom: 4px; }
+
+    .file-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--accent); color: #fff;
+      border-radius: 8px; padding: 5px 10px;
+      font-size: 12px; margin-bottom: 4px;
+      animation: fadeIn .2s ease;
+    }
     .file-chip button { background: none; border: none; color: #fff; cursor: pointer; font-size: 14px; padding: 0; line-height: 1; }
 
     .input-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; }
     #msg-input {
-      width: 100%;
-      min-height: 40px;
-      max-height: 120px;
-      padding: 10px 14px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--input-bg);
-      color: var(--text);
-      font-size: 15px;
-      resize: none;
-      outline: none;
-      font-family: inherit;
-      line-height: 1.4;
-      overflow-y: auto;
+      width: 100%; min-height: 40px; max-height: 120px;
+      padding: 10px 14px; border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--input-bg); color: var(--text);
+      font-size: 15px; resize: none; outline: none;
+      font-family: inherit; line-height: 1.4; overflow-y: auto;
+      transition: border-color .2s;
     }
+    #msg-input:focus { border-color: var(--accent); }
     #msg-input::placeholder { color: var(--text-muted); }
-    #send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s, transform .1s; }
-    #send-btn:active { transform: scale(.92); }
-    #send-btn:disabled { background: var(--border); cursor: default; }
+
+    #send-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      color: #fff; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 2px 10px rgba(99,102,241,.35);
+    }
+    #send-btn:active { transform: scale(.88); box-shadow: none; }
+    #send-btn:disabled { background: var(--border); box-shadow: none; cursor: default; }
 
     /* ══════════════════════════════════════════════════════════════════════
-       ПРОФИЛЬ / ПОПОЛНЕНИЕ
+       ПРОФИЛЬ
     ══════════════════════════════════════════════════════════════════════ */
     #profile { background: var(--bg); overflow-y: auto; }
-    .profile-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
-    .back-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--bg-secondary); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .profile-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--bg); z-index: 1;
+    }
+    .back-btn {
+      width: 36px; height: 36px; border-radius: 50%; border: none;
+      background: var(--bg-secondary); color: var(--text);
+      font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, background .15s;
+    }
+    .back-btn:active { transform: scale(.9); background: var(--border); }
     .profile-header h2 { font-size: 17px; font-weight: 700; }
 
-    .profile-body { padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
+    .profile-body { padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
 
-    .avatar-row { display: flex; align-items: center; gap: 16px; }
-    .avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a78bfa); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; color: #fff; flex-shrink: 0; }
+    .avatar-row { display: flex; align-items: center; gap: 16px; animation: fadeInUp .4s ease both; }
+    .avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 800; color: #fff; flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(99,102,241,.3);
+    }
     .user-info h3 { font-size: 18px; font-weight: 700; }
-    .user-info p { font-size: 13px; color: var(--text-muted); }
+    .user-info p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
-    .balance-card { background: linear-gradient(135deg, var(--accent), #a78bfa); border-radius: var(--radius); padding: 20px; color: #fff; }
-    .balance-card .label { font-size: 12px; opacity: .8; text-transform: uppercase; letter-spacing: .5px; }
-    .balance-card .amount { font-size: 42px; font-weight: 800; margin: 4px 0; }
-    .balance-card .sub { font-size: 13px; opacity: .8; }
+    .balance-card {
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      border-radius: var(--radius); padding: 20px; color: #fff;
+      box-shadow: 0 8px 24px rgba(99,102,241,.3);
+      animation: fadeInUp .4s .05s ease both;
+    }
+    .balance-card .bc-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .8px; }
+    .balance-card .bc-amount { font-size: 48px; font-weight: 900; line-height: 1.1; margin: 4px 0; }
+    .balance-card .bc-sub { font-size: 13px; opacity: .8; }
 
-    .model-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; align-items: center; gap: 14px; }
+    .model-card {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      display: flex; align-items: center; gap: 14px;
+      animation: fadeInUp .4s .1s ease both;
+    }
     .model-icon { font-size: 28px; }
-    .model-info .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
-    .model-info .name { font-size: 15px; font-weight: 700; }
+    .model-info .mi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+    .model-info .mi-name { font-size: 15px; font-weight: 700; margin-top: 2px; }
 
-    .packages-title { font-size: 15px; font-weight: 700; }
+    .section-title { font-size: 15px; font-weight: 700; animation: fadeInUp .4s .15s ease both; }
     .packages { display: flex; flex-direction: column; gap: 10px; }
-    .pkg { display: flex; align-items: center; justify-content: space-between; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: border-color .15s, background .15s; }
-    .pkg:active { background: var(--border); }
+
+    .pkg {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-secondary); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 15px 16px; cursor: pointer;
+      transition: border-color .2s, transform .15s, background .15s;
+      animation: fadeInUp .4s ease both;
+    }
+    .pkg:nth-child(1) { animation-delay: .2s; }
+    .pkg:nth-child(2) { animation-delay: .25s; }
+    .pkg:nth-child(3) { animation-delay: .3s; }
+    .pkg:active { transform: scale(.97); background: var(--border); }
     .pkg.popular { border-color: var(--accent); background: rgba(99,102,241,.06); }
+
     .pkg-left .pkg-name { font-size: 15px; font-weight: 700; }
     .pkg-left .pkg-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-    .pkg-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .pkg-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
     .pkg-price { font-size: 17px; font-weight: 800; color: var(--accent); }
-    .pkg-badge { font-size: 10px; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 7px; }
+    .pkg-badge { font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 7px; }
   </style>
 </head>
 <body>
 
+<!-- ── СПЛЭШ ────────────────────────────────────────────────────────────── -->
+<div id="splash">
+  <div class="splash-logo"><span>J</span></div>
+  <div class="splash-name">Jingpt</div>
+  <div class="splash-loader"></div>
+</div>
+
 <!-- ── ЛЕНДИНГ ──────────────────────────────────────────────────────────── -->
-<div id="landing" class="screen">
+<div id="landing" class="screen hidden">
   <div class="landing-top">
-    <div class="logo-wrap">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
-    </div>
+    <div class="logo-wrap"><span>J</span></div>
     <div class="logo-name">Jingpt</div>
     <div class="logo-tagline">Powered by Claude Opus 4.7</div>
 
@@ -251,31 +383,28 @@
       </a>
     </div>
   </div>
-
   <button class="btn-primary" onclick="enterApp()">Открыть Jingpt →</button>
 </div>
 
 <!-- ── ЧАТ ──────────────────────────────────────────────────────────────── -->
 <div id="chat" class="screen hidden">
   <div class="chat-header">
-    <div class="header-logo">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
-    </div>
+    <div class="header-logo"><span>J</span></div>
     <div class="header-title">
       <h1>Jingpt</h1>
       <span>Claude Opus 4.7</span>
     </div>
     <div class="balance-badge" onclick="showProfile()">
-      <span class="gem">💎</span>
+      <span>💎</span>
       <span id="balance-num">—</span>
     </div>
   </div>
 
   <div id="messages">
     <div class="empty-chat" id="empty-placeholder">
-      <div class="big-icon">🤖</div>
+      <div class="empty-icon">🤖</div>
       <h2>Привет! Я Jingpt</h2>
-      <p>Задай мне любой вопрос или прикрепи файл — я помогу разобраться.</p>
+      <p>Задай любой вопрос или прикрепи файл — помогу разобраться.</p>
     </div>
   </div>
 
@@ -304,25 +433,25 @@
       <div class="avatar" id="user-avatar">?</div>
       <div class="user-info">
         <h3 id="user-name">—</h3>
-        <p id="user-username">—</p>
+        <p id="user-username"></p>
       </div>
     </div>
 
     <div class="balance-card">
-      <div class="label">Баланс запросов</div>
-      <div class="amount" id="profile-balance">—</div>
-      <div class="sub">запросов осталось</div>
+      <div class="bc-label">Баланс запросов</div>
+      <div class="bc-amount" id="profile-balance">—</div>
+      <div class="bc-sub">запросов осталось</div>
     </div>
 
     <div class="model-card">
       <div class="model-icon">⚡</div>
       <div class="model-info">
-        <div class="label">Модель</div>
-        <div class="name">Claude Opus 4.7</div>
+        <div class="mi-label">Модель</div>
+        <div class="mi-name">Claude Opus 4.7</div>
       </div>
     </div>
 
-    <div class="packages-title">Пополнить баланс</div>
+    <div class="section-title">Пополнить баланс</div>
     <div class="packages">
       <div class="pkg" onclick="buyPackage(1, 15)">
         <div class="pkg-left">
@@ -358,29 +487,32 @@
 </div>
 
 <script>
-// ── Конфиг ─────────────────────────────────────────────────────────────────
-const API = '';   // пустая строка = тот же хост, где открыт mini app
-
-// ── Telegram WebApp ────────────────────────────────────────────────────────
-const tg = window.Telegram?.WebApp;
+const API = '';
+const tg  = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 // Тема
-(function applyTheme() {
-  const params = tg?.themeParams || {};
-  const isDark = (params.bg_color || '#ffffff').toLowerCase() < '#888888';
-  if (isDark) document.body.classList.add('dark');
+(function() {
+  const p = tg?.themeParams || {};
+  const bg = (p.bg_color || '#ffffff').replace('#','');
+  const r = parseInt(bg.slice(0,2),16), g = parseInt(bg.slice(2,4),16), b = parseInt(bg.slice(4,6),16);
+  if ((r*299 + g*587 + b*114) / 1000 < 128) document.body.classList.add('dark');
 })();
 
-// ── Состояние ───────────────────────────────────────────────────────────────
 let state = { userId: null, balance: 0, pendingFile: null };
 
-// ── Инициализация ───────────────────────────────────────────────────────────
+// ── Сплэш ─────────────────────────────────────────────────────────────────
+function hideSplash() {
+  const s = document.getElementById('splash');
+  s.classList.add('hide');
+  setTimeout(() => s.remove(), 400);
+}
+
+// ── Инициализация ──────────────────────────────────────────────────────────
 async function init() {
   const initData = tg?.initData || '';
   if (!initData) {
-    // Режим разработки без Telegram
-    console.warn('No initData — dev mode');
+    setTimeout(() => { hideSplash(); showScreen('landing'); }, 1200);
     return;
   }
   try {
@@ -389,53 +521,58 @@ async function init() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ init_data: initData }),
     });
-    if (!res.ok) return;
+    if (!res.ok) throw new Error();
     const data = await res.json();
     state.userId  = data.user.user_id;
     state.balance = data.user.balance;
 
-    // Заполняем профиль
     const fn = data.user.first_name || '';
     const ln = data.user.last_name  || '';
     document.getElementById('user-name').textContent     = `${fn} ${ln}`.trim() || 'Пользователь';
     document.getElementById('user-username').textContent = data.user.username ? `@${data.user.username}` : '';
     document.getElementById('user-avatar').textContent   = (fn[0] || '?').toUpperCase();
-
     updateBalance(state.balance);
 
-    // Восстанавливаем историю
     if (data.history?.length) {
       document.getElementById('empty-placeholder')?.remove();
-      data.history.forEach(m => renderMessage(m.role, m.content));
+      data.history.forEach(m => renderMessage(m.role, m.content, null, false));
     }
-  } catch(e) { console.error(e); }
+
+    hideSplash();
+    showScreen('chat');
+  } catch(e) {
+    hideSplash();
+    showScreen('landing');
+  }
 }
 
-// ── Навигация ───────────────────────────────────────────────────────────────
+// ── Навигация ──────────────────────────────────────────────────────────────
 function showScreen(id) {
-  ['landing','chat','profile'].forEach(s => {
-    document.getElementById(s).classList.toggle('hidden', s !== id);
-  });
+  ['landing','chat','profile'].forEach(s =>
+    document.getElementById(s).classList.toggle('hidden', s !== id)
+  );
 }
-function enterApp()   { showScreen('chat'); }
-function showChat()   { showScreen('chat'); }
-function showProfile(){ showScreen('profile'); document.getElementById('profile-balance').textContent = state.balance; }
+function enterApp()    { showScreen('chat'); }
+function showChat()    { showScreen('chat'); }
+function showProfile() {
+  document.getElementById('profile-balance').textContent = state.balance;
+  showScreen('profile');
+}
 
-// ── Баланс ──────────────────────────────────────────────────────────────────
+// ── Баланс ─────────────────────────────────────────────────────────────────
 function updateBalance(n) {
   state.balance = n;
   document.getElementById('balance-num').textContent = n;
   document.getElementById('profile-balance').textContent = n;
 }
 
-// ── Файл ────────────────────────────────────────────────────────────────────
-document.getElementById('file-input').addEventListener('change', async (e) => {
+// ── Файл ───────────────────────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    const b64 = reader.result.split(',')[1];
-    state.pendingFile = { name: file.name, type: file.type, data: b64, url: reader.result };
+    state.pendingFile = { name: file.name, type: file.type, data: reader.result.split(',')[1], url: reader.result };
     document.getElementById('file-chip-name').textContent = `📎 ${file.name}`;
     document.getElementById('file-chip').style.display = 'flex';
   };
@@ -446,24 +583,22 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 function clearFile() {
   state.pendingFile = null;
   document.getElementById('file-chip').style.display = 'none';
-  document.getElementById('file-chip-name').textContent = '';
 }
 
-// ── Рендер сообщения ─────────────────────────────────────────────────────────
-function renderMessage(role, text, filePreview = null) {
-  const empty = document.getElementById('empty-placeholder');
-  if (empty) empty.remove();
-
+// ── Рендер сообщения ───────────────────────────────────────────────────────
+function renderMessage(role, text, filePreview = null, animate = true) {
+  document.getElementById('empty-placeholder')?.remove();
   const msgs = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
+  if (!animate) wrap.style.animation = 'none';
 
   if (filePreview && role === 'user') {
     const prev = document.createElement('div');
     if (filePreview.startsWith('data:image')) {
       prev.innerHTML = `<img src="${filePreview}" />`;
     } else {
-      prev.className = 'file-preview';
+      prev.className = 'file-chip-msg';
       prev.textContent = '📎 ' + (state.pendingFile?.name || 'файл');
     }
     wrap.appendChild(prev);
@@ -485,21 +620,18 @@ function renderMessage(role, text, filePreview = null) {
   msgs.scrollTop = msgs.scrollHeight;
 }
 
-// ── Typing индикатор ─────────────────────────────────────────────────────────
+// ── Typing ─────────────────────────────────────────────────────────────────
 function showTyping() {
   const msgs = document.getElementById('messages');
   const t = document.createElement('div');
-  t.id = 'typing';
-  t.className = 'msg assistant';
+  t.id = 'typing'; t.className = 'msg assistant';
   t.innerHTML = '<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
   msgs.appendChild(t);
   msgs.scrollTop = msgs.scrollHeight;
 }
-function hideTyping() {
-  document.getElementById('typing')?.remove();
-}
+function hideTyping() { document.getElementById('typing')?.remove(); }
 
-// ── Авторасширение textarea ─────────────────────────────────────────────────
+// ── Textarea ───────────────────────────────────────────────────────────────
 const msgInput = document.getElementById('msg-input');
 msgInput.addEventListener('input', () => {
   msgInput.style.height = 'auto';
@@ -509,56 +641,29 @@ msgInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-// ── Отправка ─────────────────────────────────────────────────────────────────
+// ── Отправка ───────────────────────────────────────────────────────────────
 async function sendMessage() {
   const text = msgInput.value.trim();
   const file = state.pendingFile;
   if (!text && !file) return;
-  if (!state.userId) {
-    alert('Откройте бота через Telegram');
-    return;
-  }
-  if (state.balance <= 0) {
-    showProfile();
-    tg?.showAlert('Баланс пуст. Пополните, чтобы продолжить.');
-    return;
-  }
+  if (!state.userId) { tg?.showAlert('Откройте приложение через Telegram'); return; }
+  if (state.balance <= 0) { showProfile(); tg?.showAlert('Баланс пуст — пополните, чтобы продолжить.'); return; }
 
-  // Показываем сообщение пользователя
   renderMessage('user', text, file?.url);
-  msgInput.value = '';
-  msgInput.style.height = 'auto';
+  msgInput.value = ''; msgInput.style.height = 'auto';
   clearFile();
   document.getElementById('send-btn').disabled = true;
-
   showTyping();
 
   try {
-    const body = {
-      user_id:   state.userId,
-      message:   text,
-      file_data: file?.data  || null,
-      file_type: file?.type  || null,
-      file_name: file?.name  || null,
-    };
     const res = await fetch(`${API}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ user_id: state.userId, message: text, file_data: file?.data || null, file_type: file?.type || null, file_name: file?.name || null }),
     });
-
     hideTyping();
-
-    if (res.status === 402) {
-      showProfile();
-      tg?.showAlert('Баланс пуст. Пополните, чтобы продолжить.');
-      return;
-    }
-    if (!res.ok) {
-      renderMessage('assistant', '⚠️ Ошибка сервера. Попробуйте ещё раз.');
-      return;
-    }
-
+    if (res.status === 402) { showProfile(); tg?.showAlert('Баланс пуст — пополните, чтобы продолжить.'); return; }
+    if (!res.ok) { renderMessage('assistant', '⚠️ Ошибка сервера. Попробуйте ещё раз.'); return; }
     const data = await res.json();
     renderMessage('assistant', data.response);
     updateBalance(data.balance);
@@ -570,22 +675,19 @@ async function sendMessage() {
   }
 }
 
-// ── Покупка (заглушка до подключения ЮКассы) ────────────────────────────────
+// ── Оплата (заглушка) ──────────────────────────────────────────────────────
 function buyPackage(requests, price) {
-  tg?.showAlert(`Оплата ${price} ₽ за ${requests} запросов.\n\nФункция оплаты будет добавлена в следующем обновлении.\n\nПо вопросам: @DadaYaKiruha`);
+  tg?.showAlert(`Оплата ${price} ₽ за ${requests} запр.\n\nФункция оплаты будет добавлена совсем скоро!\n\nПо вопросам: @DadaYaKiruha`);
 }
 
-// ── iOS viewport fix ─────────────────────────────────────────────────────────
+// ── iOS viewport fix ───────────────────────────────────────────────────────
 function fixViewport() {
   const h = tg?.viewportStableHeight || window.innerHeight;
   document.body.style.height = h + 'px';
 }
-if (tg) {
-  tg.onEvent('viewportChanged', fixViewport);
-  fixViewport();
-}
+if (tg) { tg.onEvent('viewportChanged', fixViewport); fixViewport(); }
 
-// ── Старт ────────────────────────────────────────────────────────────────────
+// ── Старт ──────────────────────────────────────────────────────────────────
 init();
 </script>
 </body>
