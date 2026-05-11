@@ -185,6 +185,7 @@ async def api_chat(req: ChatRequest):
         )
         assistant_text = response.content[0].text
     except Exception as e:
+        print(f"❌ Claude error: {type(e).__name__}: {e}")
         raise HTTPException(500, f"Claude error: {e}")
 
     # Списываем баланс и сохраняем сообщения
