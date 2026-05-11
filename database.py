@@ -12,9 +12,16 @@ async def init_db():
                 first_name TEXT    DEFAULT '',
                 last_name  TEXT    DEFAULT '',
                 balance    INTEGER DEFAULT 0,
+                is_blocked INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Добавляем колонку если её нет (для существующих баз)
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN is_blocked INTEGER DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
         await db.execute("""
             CREATE TABLE IF NOT EXISTS messages (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,6 +121,15 @@ async def get_chat_history(user_id: int, limit: int = 20) -> list[dict]:
         ) as cur:
             rows = await cur.fetchall()
         return [dict(r) for r in reversed(rows)]
+
+
+async def set_blocked(user_id: int, blocked: bool):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET is_blocked = ? WHERE user_id = ?",
+            (1 if blocked else 0, user_id)
+        )
+        await db.commit()
 
 
 async def add_transaction(user_id: int, amount_rub: float,

@@ -219,6 +219,19 @@ async def admin_topup(request: Request, req: TopupRequest):
     updated = await db.get_user(req.user_id)
     return {"new_balance": updated["balance"]}
 
+class BlockRequest(BaseModel):
+    user_id:  int
+    blocked:  bool
+
+@app.post("/api/admin/block")
+async def admin_block(request: Request, req: BlockRequest):
+    check_admin(request)
+    user = await db.get_user(req.user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    await db.set_blocked(req.user_id, req.blocked)
+    return {"ok": True, "blocked": req.blocked}
+
 # ── Статические файлы Mini App ─────────────────────────────────────────────────
 app.mount("/miniapp", StaticFiles(directory="miniapp", html=True), name="miniapp")
 

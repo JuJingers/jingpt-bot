@@ -51,6 +51,10 @@ async def cmd_start(message: Message):
         first_name = message.from_user.first_name or "",
         last_name  = message.from_user.last_name  or "",
     )
+    if user.get("is_blocked"):
+        await message.answer("🚫 Ваш аккаунт заблокирован.")
+        return
+
     name = message.from_user.first_name or "друг"
     await message.answer(
         f"👋 Привет, <b>{name}</b>!\n\n"
@@ -114,15 +118,24 @@ async def cmd_help(message: Message):
     )
 
 
+# ── Проверка блокировки (middleware) ─────────────────────────────────────────
+async def is_blocked(user_id: int) -> bool:
+    user = await db.get_user(user_id)
+    return bool(user and user.get("is_blocked"))
+
+
 # ── Текстовые сообщения ───────────────────────────────────────────────────────
 @dp.message(F.text)
 async def handle_text(message: Message):
-    await db.get_or_create_user(
+    user = await db.get_or_create_user(
         user_id    = message.from_user.id,
         username   = message.from_user.username   or "",
         first_name = message.from_user.first_name or "",
         last_name  = message.from_user.last_name  or "",
     )
+    if user.get("is_blocked"):
+        await message.answer("🚫 Ваш аккаунт заблокирован.")
+        return
     await message.answer(
         "💬 Общение с Jingpt доступно в приложении.\n"
         "Открой его и задай свой вопрос там:",

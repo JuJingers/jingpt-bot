@@ -29,6 +29,8 @@
     .btn:active { transform: scale(.96); }
     .btn-accent { background: var(--accent); color: #fff; }
     .btn-green  { background: var(--green);  color: #fff; }
+    .btn-red    { background: var(--red);    color: #fff; }
+    .btn-yellow { background: var(--yellow); color: #fff; }
     .btn-sm     { padding: 5px 12px; font-size: 13px; }
     .btn:hover  { opacity: .88; }
 
@@ -241,8 +243,12 @@ function renderUsers(users) {
         <td><span class="user-id">${u.user_id}</span></td>
         <td><span class="balance-chip ${balClass}">💎 ${u.balance}</span></td>
         <td><span class="user-date">${date}</span></td>
-        <td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-green btn-sm" onclick="quickTopup(${u.user_id})">+10</button>
+          ${u.is_blocked
+            ? `<button class="btn btn-yellow btn-sm" onclick="toggleBlock(${u.user_id}, false)">🔓 Разблок</button>`
+            : `<button class="btn btn-red btn-sm" onclick="toggleBlock(${u.user_id}, true)">🚫 Блок</button>`
+          }
         </td>
       </tr>`;
   }).join('');
@@ -288,6 +294,18 @@ async function topupBalance() {
     result.textContent = '❌ Ошибка запроса';
     result.className = 'err';
   }
+}
+
+async function toggleBlock(userId, blocked) {
+  try {
+    const res = await fetch(`${API}/api/admin/block`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
+      body: JSON.stringify({ user_id: userId, blocked }),
+    });
+    if (!res.ok) throw new Error();
+    loadData();
+  } catch(e) { alert('Ошибка'); }
 }
 
 async function quickTopup(userId) {
