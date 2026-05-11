@@ -1,0 +1,8 @@
+anthropic
+aiogram
+aiohttp-socks
+httpx
+fastapi
+uvicorn[standard]
+aiosqlite
+python-multipart
