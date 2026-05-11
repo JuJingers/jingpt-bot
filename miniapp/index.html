@@ -511,17 +511,20 @@ function hideSplash() {
 // ── Инициализация ──────────────────────────────────────────────────────────
 async function init() {
   const initData = tg?.initData || '';
-  if (!initData) {
-    setTimeout(() => { hideSplash(); showScreen('landing'); }, 1200);
-    return;
-  }
+
+  // Всегда показываем лендинг после сплэша
+  setTimeout(() => { hideSplash(); showScreen('landing'); }, 1200);
+
+  if (!initData) return;
+
+  // Грузим данные пользователя в фоне
   try {
     const res = await fetch(`${API}/api/init`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ init_data: initData }),
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) return;
     const data = await res.json();
     state.userId  = data.user.user_id;
     state.balance = data.user.balance;
@@ -537,13 +540,7 @@ async function init() {
       document.getElementById('empty-placeholder')?.remove();
       data.history.forEach(m => renderMessage(m.role, m.content, null, false));
     }
-
-    hideSplash();
-    showScreen('chat');
-  } catch(e) {
-    hideSplash();
-    showScreen('landing');
-  }
+  } catch(e) { console.error(e); }
 }
 
 // ── Навигация ──────────────────────────────────────────────────────────────
