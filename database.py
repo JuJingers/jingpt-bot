@@ -1,6 +1,7 @@
+import os
 import aiosqlite
 
-DB_PATH = "jingpt.db"
+DB_PATH = os.environ.get("DB_PATH", "jingpt.db")
 
 
 async def init_db():
