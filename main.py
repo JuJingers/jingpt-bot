@@ -25,7 +25,7 @@ dp  = Dispatcher()
 
 claude = anthropic.Anthropic(
     api_key=ANTHROPIC_API_KEY,
-    base_url="https://api.claudehub.fun",
+    base_url="https://api.tokenator.cloud/anthropic",
     http_client=httpx.Client(trust_env=False),
 )
 

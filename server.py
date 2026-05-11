@@ -20,7 +20,7 @@ ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "sk-hub-9iH9yudgwhmrpsB
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN",   "8563490950:AAHNoSzdlubomAUPk1M_JG4s8v690ciTNLk")
 ADMIN_PASSWORD     = os.environ.get("ADMIN_PASSWORD",   "jingpt_admin_2024")
 CLAUDE_MODEL       = "claude-opus-4-7"
-CLAUDE_BASE_URL    = "https://api.claudehub.fun"
+CLAUDE_BASE_URL    = "https://api.tokenator.cloud/anthropic"
 
 claude = anthropic.Anthropic(
     api_key=ANTHROPIC_API_KEY,
