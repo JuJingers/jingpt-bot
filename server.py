@@ -181,6 +181,13 @@ async def api_chat(req: ChatRequest):
         response = claude.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=2000,
+            system=(
+                "Ты — Jingpt, умный и дружелюбный AI-ассистент. "
+                "Отвечай ТОЛЬКО на последнее сообщение пользователя. "
+                "Не пытайся вспоминать или отвечать на предыдущие вопросы из истории — "
+                "они уже были отвечены. История диалога нужна только для контекста. "
+                "Будь конкретным, полезным и по делу."
+            ),
             messages=messages,
         )
         assistant_text = response.content[0].text
