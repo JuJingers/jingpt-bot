@@ -167,6 +167,8 @@
       flex: 1; overflow-y: auto; overflow-x: hidden;
       padding: 16px; display: flex; flex-direction: column; gap: 10px;
       scroll-behavior: smooth;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
     }
     #messages::-webkit-scrollbar { width: 0; }
 
@@ -177,9 +179,10 @@
     .bubble {
       padding: 11px 15px; border-radius: 18px;
       font-size: 15px; line-height: 1.55;
-      word-break: break-word; white-space: pre-wrap;
+      word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap;
+      overflow: hidden; max-width: 100%;
     }
-    .bubble.md { white-space: normal; word-break: break-word; }
+    .bubble.md { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
     .msg.user .bubble {
       background: linear-gradient(135deg, #6366f1, #818cf8);
       color: #fff; border-bottom-right-radius: 4px;
@@ -211,11 +214,12 @@
     .bubble.md pre {
       background: rgba(0,0,0,.2); border-radius: 10px;
       padding: 12px; margin: 8px 0;
-      overflow-x: auto; white-space: pre;
-      max-width: calc(100vw - 64px);
+      overflow-x: hidden; white-space: pre-wrap;
+      word-break: break-all;
+      max-width: 100%;
       box-sizing: border-box;
     }
-    .bubble.md pre code { background: none; padding: 0; font-size: 12px; white-space: pre; max-width: none; }
+    .bubble.md pre code { background: none; padding: 0; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-width: 100%; }
     .bubble.md blockquote {
       border-left: 3px solid rgba(255,255,255,.3);
       padding-left: 10px; margin: 6px 0; opacity: .85;
@@ -717,6 +721,33 @@ function fixViewport() {
   document.body.style.height = h + 'px';
 }
 if (tg) { tg.onEvent('viewportChanged', fixViewport); fixViewport(); }
+
+// ── Блокировка горизонтального свайпа на iOS ───────────────────────────────
+(function() {
+  const msgs = document.getElementById('messages');
+  let startX = 0, startY = 0, tracking = false;
+
+  msgs.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      tracking = true;
+    }
+  }, { passive: true });
+
+  msgs.addEventListener('touchmove', (e) => {
+    if (!tracking || e.touches.length !== 1) return;
+    const dx = Math.abs(e.touches[0].clientX - startX);
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    // Если жест горизонтальный — блокируем
+    if (dx > dy && dx > 6) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, { passive: false });
+
+  msgs.addEventListener('touchend', () => { tracking = false; }, { passive: true });
+})();
 
 // ── Старт ──────────────────────────────────────────────────────────────────
 init();
