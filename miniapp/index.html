@@ -174,17 +174,17 @@
     }
     #messages::-webkit-scrollbar { width: 0; }
 
-    .msg { display: flex; flex-direction: column; max-width: 84%; animation: msgIn .25s ease both; min-width: 0; }
+    .msg { display: flex; flex-direction: column; max-width: 84%; width: fit-content; animation: msgIn .25s ease both; min-width: 0; overflow: hidden; }
     .msg.user { align-self: flex-end; align-items: flex-end; }
     .msg.assistant { align-self: flex-start; align-items: flex-start; }
 
     .bubble {
       padding: 11px 15px; border-radius: 18px;
       font-size: 15px; line-height: 1.55;
-      word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap;
-      overflow: hidden; max-width: 100%;
+      word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;
+      min-width: 0; width: fit-content; max-width: 100%;
     }
-    .bubble.md { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+    .bubble.md { white-space: normal; word-break: break-word; overflow-wrap: break-word; }
     .msg.user .bubble {
       background: linear-gradient(135deg, #6366f1, #818cf8);
       color: #fff; border-bottom-right-radius: 4px;
