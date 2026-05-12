@@ -174,17 +174,16 @@
     }
     #messages::-webkit-scrollbar { width: 0; }
 
-    .msg { display: flex; flex-direction: column; max-width: 84%; width: fit-content; animation: msgIn .25s ease both; min-width: 0; overflow: hidden; }
+    .msg { display: flex; flex-direction: column; max-width: 84%; animation: msgIn .25s ease both; min-width: 0; }
     .msg.user { align-self: flex-end; align-items: flex-end; }
     .msg.assistant { align-self: flex-start; align-items: flex-start; }
 
     .bubble {
       padding: 11px 15px; border-radius: 18px;
       font-size: 15px; line-height: 1.55;
-      word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;
-      min-width: 0; width: fit-content; max-width: 100%;
+      word-break: break-word; white-space: pre-wrap;
     }
-    .bubble.md { white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+    .bubble.md { white-space: normal; word-break: break-word; }
     .msg.user .bubble {
       background: linear-gradient(135deg, #6366f1, #818cf8);
       color: #fff; border-bottom-right-radius: 4px;
@@ -216,12 +215,10 @@
     .bubble.md pre {
       background: rgba(0,0,0,.2); border-radius: 10px;
       padding: 12px; margin: 8px 0;
-      overflow-x: hidden; white-space: pre-wrap;
-      word-break: break-all;
-      max-width: 100%;
-      box-sizing: border-box;
+      overflow-x: auto; white-space: pre;
+      max-width: 100%; box-sizing: border-box;
     }
-    .bubble.md pre code { background: none; padding: 0; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-width: 100%; }
+    .bubble.md pre code { background: none; padding: 0; font-size: 12px; white-space: pre; }
     .bubble.md blockquote {
       border-left: 3px solid rgba(255,255,255,.3);
       padding-left: 10px; margin: 6px 0; opacity: .85;
