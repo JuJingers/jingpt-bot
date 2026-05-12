@@ -35,14 +35,15 @@
 
     /* ── Сброс ────────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { height: 100%; background: var(--bg); overflow-x: hidden; }
+    html { height: 100%; background: var(--bg); overflow: hidden; overscroll-behavior: none; }
     body {
       height: 100%; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg); color: var(--text);
-      position: fixed; width: 100%; overflow-x: hidden;
+      position: fixed; width: 100%; overflow: hidden;
+      overscroll-behavior: none;
     }
-    * { max-width: 100%; }
+    * { max-width: 100%; box-sizing: border-box; }
 
     /* ── Анимации ─────────────────────────────────────────────────────────── */
     @keyframes fadeIn    { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
@@ -168,6 +169,7 @@
       padding: 16px; display: flex; flex-direction: column; gap: 10px;
       scroll-behavior: smooth;
       touch-action: pan-y;
+      overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
     #messages::-webkit-scrollbar { width: 0; }
@@ -722,31 +724,23 @@ function fixViewport() {
 }
 if (tg) { tg.onEvent('viewportChanged', fixViewport); fixViewport(); }
 
-// ── Блокировка горизонтального свайпа на iOS ───────────────────────────────
+// ── Блокировка горизонтального свайпа на iOS (на уровне документа) ────────
 (function() {
-  const msgs = document.getElementById('messages');
-  let startX = 0, startY = 0, tracking = false;
+  let startX = 0, startY = 0;
 
-  msgs.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      tracking = true;
-    }
+  document.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
   }, { passive: true });
 
-  msgs.addEventListener('touchmove', (e) => {
-    if (!tracking || e.touches.length !== 1) return;
+  document.addEventListener('touchmove', (e) => {
     const dx = Math.abs(e.touches[0].clientX - startX);
     const dy = Math.abs(e.touches[0].clientY - startY);
-    // Если жест горизонтальный — блокируем
-    if (dx > dy && dx > 6) {
+    // Если жест явно горизонтальный — блокируем
+    if (dx > dy) {
       e.preventDefault();
-      e.stopPropagation();
     }
   }, { passive: false });
-
-  msgs.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 // ── Старт ──────────────────────────────────────────────────────────────────
