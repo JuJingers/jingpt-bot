@@ -54,11 +54,25 @@ async def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         """)
+        # Миграция таблицы transactions: добавляем plan если нет
+        try:
+            await db.execute("ALTER TABLE transactions ADD COLUMN plan TEXT DEFAULT ''")
+            await db.commit()
+        except Exception:
+            pass
+        # Делаем requests_added необязательным если таблица старая
+        try:
+            await db.execute("UPDATE transactions SET plan='' WHERE plan IS NULL")
+            await db.commit()
+        except Exception:
+            pass
+
         await db.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id         INTEGER NOT NULL,
                 amount_rub      REAL    NOT NULL,
+                requests_added  INTEGER DEFAULT 0,
                 plan            TEXT    DEFAULT '',
                 payment_id      TEXT    DEFAULT '',
                 created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -201,9 +215,9 @@ async def activate_subscription(user_id: int, plan: str, payment_id: str = ""):
             (plan, expires.isoformat(), now.isoformat(), user_id)
         )
         await db.execute(
-            """INSERT INTO transactions (user_id, amount_rub, plan, payment_id)
-               VALUES (?, ?, ?, ?)""",
-            (user_id, price, plan, payment_id)
+            """INSERT INTO transactions (user_id, amount_rub, requests_added, plan, payment_id)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, price, 0, plan, payment_id)
         )
         await db.commit()
 
@@ -248,11 +262,11 @@ async def add_balance(user_id: int, amount: int):
 
 
 async def add_transaction(user_id: int, amount_rub: float,
-                           requests_added: int, payment_id: str = ""):
+                           requests_added: int = 0, payment_id: str = ""):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO transactions (user_id, amount_rub, plan, payment_id)
-               VALUES (?, ?, ?, ?)""",
-            (user_id, amount_rub, "", payment_id),
+            """INSERT INTO transactions (user_id, amount_rub, requests_added, plan, payment_id)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, amount_rub, requests_added, "", payment_id),
         )
         await db.commit()
