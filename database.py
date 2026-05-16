@@ -70,19 +70,7 @@ async def init_db():
             await db.commit()
         except Exception:
             pass
-        # Миграция таблицы transactions: добавляем plan если нет
-        try:
-            await db.execute("ALTER TABLE transactions ADD COLUMN plan TEXT DEFAULT ''")
-            await db.commit()
-        except Exception:
-            pass
-        # Делаем requests_added необязательным если таблица старая
-        try:
-            await db.execute("UPDATE transactions SET plan='' WHERE plan IS NULL")
-            await db.commit()
-        except Exception:
-            pass
-
+        # Создаём transactions (если нет)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,6 +84,17 @@ async def init_db():
             )
         """)
         await db.commit()
+        # Миграции таблицы transactions (для старых баз на Railway)
+        for col, definition in [
+            ("plan",           "TEXT DEFAULT ''"),
+            ("requests_added", "INTEGER DEFAULT 0"),
+            ("payment_id",     "TEXT DEFAULT ''"),
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE transactions ADD COLUMN {col} {definition}")
+                await db.commit()
+            except Exception:
+                pass
 
 
 async def get_or_create_user(user_id: int, username: str = "",
@@ -230,12 +229,17 @@ async def activate_subscription(user_id: int, plan: str, payment_id: str = ""):
                WHERE user_id=?""",
             (plan, expires.isoformat(), now.isoformat(), user_id)
         )
-        await db.execute(
-            """INSERT INTO transactions (user_id, amount_rub, requests_added, plan, payment_id)
-               VALUES (?, ?, ?, ?, ?)""",
-            (user_id, price, 0, plan, payment_id)
-        )
         await db.commit()
+        # Логируем транзакцию (не критично если упадёт — подписка уже активирована)
+        try:
+            await db.execute(
+                """INSERT INTO transactions (user_id, amount_rub, requests_added, plan, payment_id)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (user_id, price, 0, plan, payment_id)
+            )
+            await db.commit()
+        except Exception as e:
+            print(f"⚠️ transactions insert error (non-critical): {e}")
 
 
 # ── Чаты ─────────────────────────────────────────────────────────────────────
