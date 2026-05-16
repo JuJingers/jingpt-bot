@@ -318,14 +318,19 @@ async function giveSub() {
       body: JSON.stringify({ user_id: parseInt(userId), plan }),
     });
     if (res.status === 404) { result.textContent = '❌ Пользователь не найден'; result.className = 'result-msg err'; return; }
-    if (!res.ok) throw new Error();
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      result.textContent = `❌ Ошибка ${res.status}: ${errText.slice(0, 120)}`;
+      result.className = 'result-msg err';
+      return;
+    }
     const data = await res.json();
     const info = PLAN_INFO[plan] || PLAN_INFO.free;
     result.textContent = `✅ Выдано: ${info.emoji} ${info.name} на 30 дней`;
     result.className = 'result-msg ok';
     loadData();
   } catch(e) {
-    result.textContent = '❌ Ошибка запроса';
+    result.textContent = `❌ Ошибка: ${e.message || 'сеть'}`;
     result.className = 'result-msg err';
   }
 }
