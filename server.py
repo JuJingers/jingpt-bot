@@ -111,9 +111,10 @@ class InitRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     user_id:   int
+    chat_id:   int | None = None
     message:   str = ""
-    file_data: str | None = None   # base64
-    file_type: str | None = None   # MIME
+    file_data: str | None = None
+    file_type: str | None = None
     file_name: str | None = None
 
 
@@ -130,9 +131,57 @@ async def api_init(req: InitRequest):
         first_name = user_data.get("first_name", ""),
         last_name  = user_data.get("last_name", ""),
     )
-    history      = await db.get_chat_history(user["user_id"])
-    subscription = await db.get_subscription(user["user_id"])
-    return {"user": user, "history": history, "subscription": subscription}
+    uid          = user["user_id"]
+    default_chat = await db.get_or_create_default_chat(uid)
+    chats        = await db.get_user_chats(uid)
+    history      = await db.get_chat_history(uid, chat_id=default_chat["id"])
+    subscription = await db.get_subscription(uid)
+    return {
+        "user": user,
+        "chats": chats,
+        "current_chat": default_chat,
+        "history": history,
+        "subscription": subscription,
+    }
+
+
+# ── Чаты CRUD ─────────────────────────────────────────────────────────────────
+class NewChatRequest(BaseModel):
+    user_id: int
+    title:   str = "Новый чат"
+
+class RenameChatRequest(BaseModel):
+    chat_id: int
+    user_id: int
+    title:   str
+
+class DeleteChatRequest(BaseModel):
+    chat_id: int
+    user_id: int
+
+class GetHistoryRequest(BaseModel):
+    user_id: int
+    chat_id: int
+
+@app.post("/api/chats/create")
+async def chats_create(req: NewChatRequest):
+    chat = await db.create_chat(req.user_id, req.title)
+    return chat
+
+@app.post("/api/chats/rename")
+async def chats_rename(req: RenameChatRequest):
+    await db.rename_chat(req.chat_id, req.user_id, req.title)
+    return {"ok": True}
+
+@app.post("/api/chats/delete")
+async def chats_delete(req: DeleteChatRequest):
+    await db.delete_chat(req.chat_id, req.user_id)
+    return {"ok": True}
+
+@app.post("/api/chats/history")
+async def chats_history(req: GetHistoryRequest):
+    history = await db.get_chat_history(req.user_id, chat_id=req.chat_id)
+    return {"history": history}
 
 
 @app.get("/api/user/{user_id}")
@@ -172,8 +221,12 @@ async def api_chat(req: ChatRequest):
     if not content:
         raise HTTPException(400, "No content provided")
 
-    # История диалога
-    history = await db.get_chat_history(req.user_id, limit=10)
+    # История диалога текущего чата
+    chat_id = req.chat_id
+    if not chat_id:
+        default = await db.get_or_create_default_chat(req.user_id)
+        chat_id = default["id"]
+    history = await db.get_chat_history(req.user_id, limit=10, chat_id=chat_id)
     messages = [{"role": h["role"], "content": h["content"]} for h in history]
     messages.append({
         "role":    "user",
@@ -198,8 +251,13 @@ async def api_chat(req: ChatRequest):
         print(f"❌ Claude error: {type(e).__name__}: {e}")
         raise HTTPException(500, f"Claude error: {e}")
 
-    await db.save_message(req.user_id, "user", req.message or f"[Файл: {req.file_name}]")
-    await db.save_message(req.user_id, "assistant", assistant_text)
+    await db.save_message(req.user_id, "user", req.message or f"[Файл: {req.file_name}]", chat_id)
+    await db.save_message(req.user_id, "assistant", assistant_text, chat_id)
+
+    # Автоназвание чата по первому сообщению
+    if history == [] and req.message:
+        title = req.message[:40] + ("…" if len(req.message) > 40 else "")
+        await db.rename_chat(chat_id, req.user_id, title)
 
     # Уведомление когда осталось мало запросов
     remaining = sub.get("remaining", 0)
