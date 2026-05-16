@@ -321,23 +321,31 @@ class GiveSubRequest(BaseModel):
 @app.post("/api/admin/give-sub")
 async def admin_give_sub(request: Request, req: GiveSubRequest):
     check_admin(request)
-    user = await db.get_user(req.user_id)
-    if not user:
-        raise HTTPException(404, "User not found")
-    if req.plan not in db.PLANS:
-        raise HTTPException(400, "Invalid plan")
-    if req.plan == "free":
-        import aiosqlite as _aio
-        async with _aio.connect(db.DB_PATH) as conn:
-            await conn.execute(
-                "UPDATE users SET subscription_type='free', subscription_expires=NULL, requests_used=0 WHERE user_id=?",
-                (req.user_id,)
-            )
-            await conn.commit()
-    else:
-        await db.activate_subscription(req.user_id, req.plan, "admin")
-    updated = await db.get_subscription(req.user_id)
-    return {"ok": True, "subscription": updated}
+    try:
+        user = await db.get_user(req.user_id)
+        if not user:
+            raise HTTPException(404, "User not found")
+        if req.plan not in db.PLANS:
+            raise HTTPException(400, "Invalid plan")
+        if req.plan == "free":
+            import aiosqlite as _aio
+            async with _aio.connect(db.DB_PATH) as conn:
+                await conn.execute(
+                    "UPDATE users SET subscription_type='free', subscription_expires=NULL, requests_used=0 WHERE user_id=?",
+                    (req.user_id,)
+                )
+                await conn.commit()
+        else:
+            await db.activate_subscription(req.user_id, req.plan, "admin")
+        updated = await db.get_subscription(req.user_id)
+        return {"ok": True, "subscription": updated}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"❌ give-sub error:\n{tb}")
+        raise HTTPException(500, f"{type(e).__name__}: {e}")
 
 
 class BlockRequest(BaseModel):
