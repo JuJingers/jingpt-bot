@@ -227,42 +227,60 @@ def check_admin(request: Request):
     if pw != ADMIN_PASSWORD:
         raise HTTPException(403, "Forbidden")
 
-class TopupRequest(BaseModel):
-    user_id: int
-    amount:  int
-
 @app.get("/api/admin/stats")
 async def admin_stats(request: Request):
     check_admin(request)
-    async with __import__("aiosqlite").connect(db.DB_PATH) as conn:
-        conn.row_factory = __import__("aiosqlite").Row
+    import aiosqlite as _aio
+    async with _aio.connect(db.DB_PATH) as conn:
+        conn.row_factory = _aio.Row
         async with conn.execute("SELECT COUNT(*) as c FROM users") as cur:
             total_users = (await cur.fetchone())["c"]
         async with conn.execute("SELECT COUNT(*) as c FROM messages WHERE role='user'") as cur:
             total_messages = (await cur.fetchone())["c"]
-        async with conn.execute("SELECT COALESCE(SUM(balance),0) as s FROM users") as cur:
-            total_balance = (await cur.fetchone())["s"]
-        async with conn.execute("SELECT COUNT(*) as c FROM users WHERE balance=0") as cur:
-            zero_balance = (await cur.fetchone())["c"]
+        async with conn.execute(
+            "SELECT COUNT(*) as c FROM users WHERE subscription_type != 'free' AND subscription_type IS NOT NULL"
+        ) as cur:
+            paid_users = (await cur.fetchone())["c"]
+        async with conn.execute(
+            "SELECT subscription_type, COUNT(*) as c FROM users GROUP BY subscription_type"
+        ) as cur:
+            by_plan = {r["subscription_type"] or "free": r["c"] for r in await cur.fetchall()}
         async with conn.execute("SELECT * FROM users ORDER BY created_at DESC") as cur:
             users = [dict(r) for r in await cur.fetchall()]
     return {
         "total_users":    total_users,
         "total_messages": total_messages,
-        "total_balance":  total_balance,
-        "zero_balance":   zero_balance,
+        "paid_users":     paid_users,
+        "by_plan":        by_plan,
         "users":          users,
     }
 
-@app.post("/api/admin/topup")
-async def admin_topup(request: Request, req: TopupRequest):
+
+class GiveSubRequest(BaseModel):
+    user_id: int
+    plan:    str   # free | start | pro | max
+
+@app.post("/api/admin/give-sub")
+async def admin_give_sub(request: Request, req: GiveSubRequest):
     check_admin(request)
     user = await db.get_user(req.user_id)
     if not user:
         raise HTTPException(404, "User not found")
-    await db.add_balance(req.user_id, req.amount)
-    updated = await db.get_user(req.user_id)
-    return {"new_balance": updated["balance"]}
+    if req.plan not in db.PLANS:
+        raise HTTPException(400, "Invalid plan")
+    if req.plan == "free":
+        import aiosqlite as _aio
+        async with _aio.connect(db.DB_PATH) as conn:
+            await conn.execute(
+                "UPDATE users SET subscription_type='free', subscription_expires=NULL, requests_used=0 WHERE user_id=?",
+                (req.user_id,)
+            )
+            await conn.commit()
+    else:
+        await db.activate_subscription(req.user_id, req.plan, "admin")
+    updated = await db.get_subscription(req.user_id)
+    return {"ok": True, "subscription": updated}
+
 
 class BlockRequest(BaseModel):
     user_id:  int

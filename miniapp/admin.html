@@ -14,74 +14,84 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
 
-    /* ── Шапка ── */
     header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
     .logo { display: flex; align-items: center; gap: 10px; }
-    .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #fff; }
+    .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #fff; }
     .logo-name { font-size: 18px; font-weight: 800; }
     .logo-badge { font-size: 11px; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 8px; margin-left: 6px; }
     #login-form { display: flex; gap: 8px; }
     #password-input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 14px; outline: none; width: 180px; }
     #password-input:focus { border-color: var(--accent); }
 
-    /* ── Кнопки ── */
     .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
     .btn:active { transform: scale(.96); }
     .btn-accent { background: var(--accent); color: #fff; }
     .btn-green  { background: var(--green);  color: #fff; }
     .btn-red    { background: var(--red);    color: #fff; }
     .btn-yellow { background: var(--yellow); color: #fff; }
-    .btn-sm     { padding: 5px 12px; font-size: 13px; }
+    .btn-sm     { padding: 5px 10px; font-size: 12px; }
     .btn:hover  { opacity: .88; }
 
-    /* ── Контент ── */
-    main { max-width: 1000px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 24px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 24px; }
 
-    /* ── Статы ── */
+    /* Статы */
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
     .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
-    .stat-card .s-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .stat-card .s-value { font-size: 32px; font-weight: 800; margin-top: 6px; }
-    .stat-card .s-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .s-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .s-value { font-size: 32px; font-weight: 800; margin-top: 6px; }
+    .s-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
     .s-value.green  { color: var(--green); }
     .s-value.accent { color: var(--accent); }
     .s-value.yellow { color: var(--yellow); }
+    .s-value.red    { color: var(--red); }
 
-    /* ── Пополнение ── */
-    .topup-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
-    .topup-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
-    .topup-form { display: flex; gap: 10px; flex-wrap: wrap; }
-    .topup-form input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; color: var(--text); font-size: 14px; outline: none; flex: 1; min-width: 120px; }
-    .topup-form input:focus { border-color: var(--accent); }
-    .topup-form input::placeholder { color: var(--muted); }
-    #topup-result { font-size: 13px; margin-top: 10px; min-height: 20px; }
+    /* Тарифная сводка */
+    .plan-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .plan-pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; text-align: center; }
+    .plan-pill .pp-emoji { font-size: 22px; }
+    .plan-pill .pp-name  { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .plan-pill .pp-count { font-size: 24px; font-weight: 800; margin-top: 2px; }
+
+    /* Карточки */
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .form-row input, .form-row select {
+      background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 13px; color: var(--text); font-size: 14px; outline: none; flex: 1; min-width: 120px;
+    }
+    .form-row input:focus, .form-row select:focus { border-color: var(--accent); }
+    .form-row select option { background: var(--bg3); }
+    .result-msg { font-size: 13px; margin-top: 10px; min-height: 20px; }
     .ok  { color: var(--green); }
     .err { color: var(--red); }
 
-    /* ── Таблица пользователей ── */
+    /* Таблица */
     .users-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .users-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .users-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
     .users-header h2 { font-size: 15px; font-weight: 700; }
-    #search { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 13px; outline: none; width: 200px; }
+    #search { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 13px; outline: none; width: 220px; }
     #search:focus { border-color: var(--accent); }
     #search::placeholder { color: var(--muted); }
 
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 10px 20px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
-    td { padding: 12px 20px; font-size: 14px; border-bottom: 1px solid var(--border); }
+    th { text-align: left; padding: 10px 16px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 11px 16px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: var(--bg3); }
 
-    .balance-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-    .balance-chip.ok   { background: rgba(34,197,94,.15);  color: var(--green); }
-    .balance-chip.low  { background: rgba(245,158,11,.15); color: var(--yellow); }
-    .balance-chip.zero { background: rgba(239,68,68,.15);  color: var(--red); }
+    .plan-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .plan-chip.free  { background: rgba(113,113,122,.2); color: var(--muted); }
+    .plan-chip.start { background: rgba(99,102,241,.2);  color: #818cf8; }
+    .plan-chip.pro   { background: rgba(168,85,247,.2);  color: #c084fc; }
+    .plan-chip.max   { background: rgba(245,158,11,.2);  color: var(--yellow); }
 
-    .user-id { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .usage-mini { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .user-id   { font-size: 12px; color: var(--muted); font-family: monospace; }
     .user-date { font-size: 12px; color: var(--muted); }
+    .actions   { display: flex; gap: 5px; flex-wrap: wrap; }
 
-    /* ── Пусто / загрузка ── */
-    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .empty  { text-align: center; padding: 40px; color: var(--muted); }
     .locked { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
     .locked-box { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
     .locked-box .lock-icon { font-size: 56px; }
@@ -105,7 +115,7 @@
 <main id="main-content" style="display:none">
 
   <!-- Статистика -->
-  <div class="stats" id="stats">
+  <div class="stats">
     <div class="stat-card">
       <div class="s-label">Пользователей</div>
       <div class="s-value accent" id="stat-users">—</div>
@@ -117,42 +127,56 @@
       <div class="s-sub">всего сделано</div>
     </div>
     <div class="stat-card">
-      <div class="s-label">Баланс (сумма)</div>
-      <div class="s-value yellow" id="stat-balance">—</div>
-      <div class="s-sub">запросов у пользователей</div>
+      <div class="s-label">Платных</div>
+      <div class="s-value yellow" id="stat-paid">—</div>
+      <div class="s-sub">активных подписок</div>
     </div>
     <div class="stat-card">
-      <div class="s-label">Без баланса</div>
-      <div class="s-value" style="color:var(--red)" id="stat-zero">—</div>
-      <div class="s-sub">нужно пополнение</div>
+      <div class="s-label">Бесплатных</div>
+      <div class="s-value" style="color:var(--muted)" id="stat-free">—</div>
+      <div class="s-sub">на free-тарифе</div>
     </div>
   </div>
 
-  <!-- Пополнение баланса -->
-  <div class="topup-card">
-    <h2>➕ Пополнить баланс пользователю</h2>
-    <div class="topup-form">
-      <input type="number" id="topup-id" placeholder="Telegram ID пользователя" />
-      <input type="number" id="topup-amount" placeholder="Кол-во запросов" min="1" value="10" />
-      <button class="btn btn-green" onclick="topupBalance()">Пополнить</button>
+  <!-- Разбивка по тарифам -->
+  <div class="plan-summary" id="plan-summary">
+    <div class="plan-pill"><div class="pp-emoji">🆓</div><div class="pp-name">Бесплатно</div><div class="pp-count" id="pp-free">—</div></div>
+    <div class="plan-pill"><div class="pp-emoji">⚡</div><div class="pp-name">Старт</div><div class="pp-count" id="pp-start">—</div></div>
+    <div class="plan-pill"><div class="pp-emoji">🚀</div><div class="pp-name">Про</div><div class="pp-count" id="pp-pro">—</div></div>
+    <div class="plan-pill"><div class="pp-emoji">💎</div><div class="pp-name">Безлимит</div><div class="pp-count" id="pp-max">—</div></div>
+  </div>
+
+  <!-- Выдача подписки -->
+  <div class="card">
+    <h2>🎁 Выдать подписку пользователю</h2>
+    <div class="form-row">
+      <input type="number" id="sub-user-id" placeholder="Telegram ID пользователя" />
+      <select id="sub-plan">
+        <option value="start">⚡ Старт — 200 запросов/мес</option>
+        <option value="pro">🚀 Про — 1000 запросов/мес</option>
+        <option value="max">💎 Безлимит</option>
+        <option value="free">🆓 Вернуть на Free</option>
+      </select>
+      <button class="btn btn-green" onclick="giveSub()">Выдать на 30 дней</button>
     </div>
-    <div id="topup-result"></div>
+    <div class="result-msg" id="sub-result"></div>
   </div>
 
   <!-- Таблица пользователей -->
   <div class="users-card">
     <div class="users-header">
       <h2>👥 Пользователи</h2>
-      <input type="text" id="search" placeholder="Поиск по имени или ID..." oninput="filterUsers()" />
+      <input type="text" id="search" placeholder="Поиск по имени, @username или ID..." oninput="filterUsers()" />
     </div>
     <table>
       <thead>
         <tr>
           <th>Пользователь</th>
           <th>Telegram ID</th>
-          <th>Баланс</th>
+          <th>Подписка</th>
+          <th>Использовано</th>
           <th>Регистрация</th>
-          <th>Действие</th>
+          <th>Действия</th>
         </tr>
       </thead>
       <tbody id="users-table"></tbody>
@@ -162,7 +186,6 @@
 
 </main>
 
-<!-- Заблокировано -->
 <div class="locked" id="locked-screen">
   <div class="locked-box">
     <div class="lock-icon">🔒</div>
@@ -176,19 +199,23 @@ const API = '';
 let ADMIN_PASSWORD = '';
 let allUsers = [];
 
-// ── Вход ──────────────────────────────────────────────────────────────────────
+const PLAN_INFO = {
+  free:  { emoji: '🆓', name: 'Бесплатно', cls: 'free',  limit: 10 },
+  start: { emoji: '⚡', name: 'Старт',     cls: 'start', limit: 200 },
+  pro:   { emoji: '🚀', name: 'Про',       cls: 'pro',   limit: 1000 },
+  max:   { emoji: '💎', name: 'Безлимит',  cls: 'max',   limit: 999999 },
+};
+
 function login() {
   const pw = document.getElementById('password-input').value.trim();
   if (!pw) return;
   ADMIN_PASSWORD = pw;
   loadData();
 }
-
 document.getElementById('password-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') login();
 });
 
-// ── Загрузка данных ───────────────────────────────────────────────────────────
 async function loadData() {
   try {
     const res = await fetch(`${API}/api/admin/stats`, {
@@ -198,18 +225,23 @@ async function loadData() {
     if (!res.ok) throw new Error();
     const data = await res.json();
 
-    // Показываем контент
     document.getElementById('locked-screen').style.display = 'none';
-    document.getElementById('main-content').style.display = 'flex';
-    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('main-content').style.display  = 'flex';
+    document.getElementById('login-form').style.display    = 'none';
 
-    // Статистика
+    // Статы
+    const freeCount = data.by_plan?.free || 0;
     document.getElementById('stat-users').textContent    = data.total_users;
     document.getElementById('stat-messages').textContent = data.total_messages;
-    document.getElementById('stat-balance').textContent  = data.total_balance;
-    document.getElementById('stat-zero').textContent     = data.zero_balance;
+    document.getElementById('stat-paid').textContent     = data.paid_users;
+    document.getElementById('stat-free').textContent     = freeCount;
 
-    // Пользователи
+    // По тарифам
+    document.getElementById('pp-free').textContent  = data.by_plan?.free  || 0;
+    document.getElementById('pp-start').textContent = data.by_plan?.start || 0;
+    document.getElementById('pp-pro').textContent   = data.by_plan?.pro   || 0;
+    document.getElementById('pp-max').textContent   = data.by_plan?.max   || 0;
+
     allUsers = data.users;
     renderUsers(allUsers);
   } catch(e) {
@@ -217,23 +249,23 @@ async function loadData() {
   }
 }
 
-// ── Рендер таблицы ─────────────────────────────────────────────────────────────
 function renderUsers(users) {
   const tbody = document.getElementById('users-table');
   const empty = document.getElementById('empty-msg');
-
-  if (!users.length) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
+  if (!users.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
 
   tbody.innerHTML = users.map(u => {
-    const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
+    const name     = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
     const username = u.username ? `@${u.username}` : '';
-    const date = new Date(u.created_at).toLocaleDateString('ru');
-    const balClass = u.balance === 0 ? 'zero' : u.balance <= 3 ? 'low' : 'ok';
+    const date     = new Date(u.created_at).toLocaleDateString('ru');
+    const plan     = u.subscription_type || 'free';
+    const info     = PLAN_INFO[plan] || PLAN_INFO.free;
+    const limit    = info.limit >= 999999 ? '∞' : info.limit;
+    const used     = u.requests_used || 0;
+    const expires  = u.subscription_expires
+      ? new Date(u.subscription_expires).toLocaleDateString('ru') : '—';
+
     return `
       <tr>
         <td>
@@ -241,59 +273,73 @@ function renderUsers(users) {
           <div style="font-size:12px;color:var(--muted)">${username}</div>
         </td>
         <td><span class="user-id">${u.user_id}</span></td>
-        <td><span class="balance-chip ${balClass}">💎 ${u.balance}</span></td>
+        <td>
+          <span class="plan-chip ${info.cls}">${info.emoji} ${info.name}</span>
+          ${plan !== 'free' ? `<div class="usage-mini">до ${expires}</div>` : ''}
+        </td>
+        <td>
+          <div>${used} / ${limit}</div>
+          ${limit !== '∞' ? `<div class="usage-mini">${Math.max(0, (info.limit||10) - used)} осталось</div>` : ''}
+        </td>
         <td><span class="user-date">${date}</span></td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-green btn-sm" onclick="quickTopup(${u.user_id})">+10</button>
-          ${u.is_blocked
-            ? `<button class="btn btn-yellow btn-sm" onclick="toggleBlock(${u.user_id}, false)">🔓 Разблок</button>`
-            : `<button class="btn btn-red btn-sm" onclick="toggleBlock(${u.user_id}, true)">🚫 Блок</button>`
-          }
+        <td>
+          <div class="actions">
+            <button class="btn btn-accent btn-sm" onclick="quickGivePro(${u.user_id})">🚀 Про</button>
+            ${u.is_blocked
+              ? `<button class="btn btn-yellow btn-sm" onclick="toggleBlock(${u.user_id}, false)">🔓</button>`
+              : `<button class="btn btn-red btn-sm" onclick="toggleBlock(${u.user_id}, true)">🚫</button>`
+            }
+          </div>
         </td>
       </tr>`;
   }).join('');
 }
 
-// ── Поиск ─────────────────────────────────────────────────────────────────────
 function filterUsers() {
   const q = document.getElementById('search').value.toLowerCase();
-  const filtered = allUsers.filter(u =>
+  renderUsers(allUsers.filter(u =>
     (u.first_name || '').toLowerCase().includes(q) ||
     (u.last_name  || '').toLowerCase().includes(q) ||
     (u.username   || '').toLowerCase().includes(q) ||
     String(u.user_id).includes(q)
-  );
-  renderUsers(filtered);
+  ));
 }
 
-// ── Пополнение ────────────────────────────────────────────────────────────────
-async function topupBalance() {
-  const userId = document.getElementById('topup-id').value.trim();
-  const amount = parseInt(document.getElementById('topup-amount').value);
-  const result = document.getElementById('topup-result');
-
-  if (!userId || !amount || amount < 1) {
-    result.textContent = '⚠️ Укажите ID и количество запросов';
-    result.className = 'err';
-    return;
-  }
+async function giveSub() {
+  const userId = document.getElementById('sub-user-id').value.trim();
+  const plan   = document.getElementById('sub-plan').value;
+  const result = document.getElementById('sub-result');
+  if (!userId) { result.textContent = '⚠️ Укажите Telegram ID'; result.className = 'result-msg err'; return; }
 
   try {
-    const res = await fetch(`${API}/api/admin/topup`, {
+    const res = await fetch(`${API}/api/admin/give-sub`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
-      body: JSON.stringify({ user_id: parseInt(userId), amount }),
+      body: JSON.stringify({ user_id: parseInt(userId), plan }),
     });
-    if (res.status === 404) { result.textContent = '❌ Пользователь не найден'; result.className = 'err'; return; }
+    if (res.status === 404) { result.textContent = '❌ Пользователь не найден'; result.className = 'result-msg err'; return; }
     if (!res.ok) throw new Error();
     const data = await res.json();
-    result.textContent = `✅ Готово! Новый баланс: ${data.new_balance} запросов`;
-    result.className = 'ok';
+    const info = PLAN_INFO[plan] || PLAN_INFO.free;
+    result.textContent = `✅ Выдано: ${info.emoji} ${info.name} на 30 дней`;
+    result.className = 'result-msg ok';
     loadData();
   } catch(e) {
     result.textContent = '❌ Ошибка запроса';
-    result.className = 'err';
+    result.className = 'result-msg err';
   }
+}
+
+async function quickGivePro(userId) {
+  try {
+    const res = await fetch(`${API}/api/admin/give-sub`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
+      body: JSON.stringify({ user_id: userId, plan: 'pro' }),
+    });
+    if (!res.ok) throw new Error();
+    loadData();
+  } catch(e) { alert('Ошибка'); }
 }
 
 async function toggleBlock(userId, blocked) {
@@ -302,18 +348,6 @@ async function toggleBlock(userId, blocked) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
       body: JSON.stringify({ user_id: userId, blocked }),
-    });
-    if (!res.ok) throw new Error();
-    loadData();
-  } catch(e) { alert('Ошибка'); }
-}
-
-async function quickTopup(userId) {
-  try {
-    const res = await fetch(`${API}/api/admin/topup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN_PASSWORD },
-      body: JSON.stringify({ user_id: userId, amount: 10 }),
     });
     if (!res.ok) throw new Error();
     loadData();
