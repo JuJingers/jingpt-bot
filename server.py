@@ -130,8 +130,9 @@ async def api_init(req: InitRequest):
         first_name = user_data.get("first_name", ""),
         last_name  = user_data.get("last_name", ""),
     )
-    history = await db.get_chat_history(user["user_id"])
-    return {"user": user, "history": history}
+    history      = await db.get_chat_history(user["user_id"])
+    subscription = await db.get_subscription(user["user_id"])
+    return {"user": user, "history": history, "subscription": subscription}
 
 
 @app.get("/api/user/{user_id}")
@@ -147,39 +148,31 @@ async def api_chat(req: ChatRequest):
     user = await db.get_user(req.user_id)
     if not user:
         raise HTTPException(404, "User not found")
-    if user["balance"] <= 0:
-        raise HTTPException(402, "Insufficient balance")
+
+    # Проверяем подписку и лимиты
+    can_use, sub = await db.use_request(req.user_id)
+    if not can_use:
+        raise HTTPException(402, "Limit reached")
 
     # Собираем контент сообщения
     content: list = []
-
     if req.file_data and req.file_type:
         if req.file_type.startswith("image/"):
             content.append({
                 "type": "image",
-                "source": {
-                    "type":       "base64",
-                    "media_type": req.file_type,
-                    "data":       req.file_data,
-                },
+                "source": {"type": "base64", "media_type": req.file_type, "data": req.file_data},
             })
         elif req.file_type == "application/pdf":
             content.append({
                 "type": "document",
-                "source": {
-                    "type":       "base64",
-                    "media_type": "application/pdf",
-                    "data":       req.file_data,
-                },
+                "source": {"type": "base64", "media_type": "application/pdf", "data": req.file_data},
             })
-
     if req.message:
         content.append({"type": "text", "text": req.message})
-
     if not content:
         raise HTTPException(400, "No content provided")
 
-    # История диалога (контекст)
+    # История диалога
     history = await db.get_chat_history(req.user_id, limit=10)
     messages = [{"role": h["role"], "content": h["content"]} for h in history]
     messages.append({
@@ -195,8 +188,7 @@ async def api_chat(req: ChatRequest):
             system=(
                 "Ты — Jingpt, умный и дружелюбный AI-ассистент. "
                 "Отвечай ТОЛЬКО на последнее сообщение пользователя. "
-                "Не пытайся вспоминать или отвечать на предыдущие вопросы из истории — "
-                "они уже были отвечены. История диалога нужна только для контекста. "
+                "История диалога нужна только для контекста — не отвечай на старые вопросы. "
                 "Будь конкретным, полезным и по делу."
             ),
             messages=messages,
@@ -206,31 +198,27 @@ async def api_chat(req: ChatRequest):
         print(f"❌ Claude error: {type(e).__name__}: {e}")
         raise HTTPException(500, f"Claude error: {e}")
 
-    # Списываем баланс и сохраняем сообщения
-    await db.deduct_balance(req.user_id)
-    await db.save_message(req.user_id, "user",
-                          req.message or f"[Файл: {req.file_name}]")
+    await db.save_message(req.user_id, "user", req.message or f"[Файл: {req.file_name}]")
     await db.save_message(req.user_id, "assistant", assistant_text)
 
-    updated = await db.get_user(req.user_id)
-    balance = updated["balance"]
-
-    # Уведомления о балансе
-    if balance == 0:
+    # Уведомление когда осталось мало запросов
+    remaining = sub.get("remaining", 0)
+    limit     = sub.get("limit", 20)
+    if remaining == 0:
         asyncio.create_task(send_tg_notification(
             req.user_id,
-            "⚠️ <b>Баланс закончился!</b>\n\n"
-            "У вас не осталось запросов.\n"
-            "Пополните баланс, чтобы продолжить общение с Jingpt 👇"
+            f"⚠️ <b>Лимит исчерпан!</b>\n\n"
+            f"Вы использовали все {limit} запросов этого месяца.\n"
+            f"Оформите подписку, чтобы продолжить 👇"
         ))
-    elif balance == 3:
+    elif remaining == 5:
         asyncio.create_task(send_tg_notification(
             req.user_id,
-            f"💎 <b>Осталось {balance} запроса</b>\n\n"
-            "Скоро баланс закончится — пополните заранее, чтобы не прерываться 👇"
+            f"💡 <b>Осталось {remaining} запросов</b>\n\n"
+            f"Скоро закончится лимит — обновите подписку заранее 👇"
         ))
 
-    return {"response": assistant_text, "balance": balance}
+    return {"response": assistant_text, "subscription": sub}
 
 
 # ── Админка ───────────────────────────────────────────────────────────────────
@@ -289,28 +277,26 @@ async def admin_block(request: Request, req: BlockRequest):
     await db.set_blocked(req.user_id, req.blocked)
     return {"ok": True, "blocked": req.blocked}
 
-# ── ЮКасса: создание платежа ──────────────────────────────────────────────────
+# ── ЮКасса: создание платежа (подписка) ──────────────────────────────────────
 class PaymentRequest(BaseModel):
-    user_id:  int
-    requests: int   # кол-во запросов
-    amount:   int   # сумма в рублях
-
-PACKAGES = {1: 15, 10: 99, 50: 349}   # requests → price
+    user_id: int
+    plan:    str   # "start" | "pro" | "max"
 
 @app.post("/api/payment/create")
 async def payment_create(req: PaymentRequest):
     user = await db.get_user(req.user_id)
     if not user:
         raise HTTPException(404, "User not found")
-    if PACKAGES.get(req.requests) != req.amount:
-        raise HTTPException(400, "Invalid package")
+    plan_info = db.PLANS.get(req.plan)
+    if not plan_info or plan_info["price"] == 0:
+        raise HTTPException(400, "Invalid plan")
 
     payload = {
-        "amount":       {"value": f"{req.amount}.00", "currency": "RUB"},
+        "amount":       {"value": f"{plan_info['price']}.00", "currency": "RUB"},
         "confirmation": {"type": "redirect", "return_url": MINIAPP_URL},
         "capture":      True,
-        "description":  f"Jingpt — {req.requests} запросов",
-        "metadata":     {"user_id": str(req.user_id), "requests": str(req.requests)},
+        "description":  f"Jingpt {plan_info['name']} — {plan_info['limit']} запросов/мес",
+        "metadata":     {"user_id": str(req.user_id), "plan": req.plan},
     }
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -334,20 +320,20 @@ async def payment_webhook(request: Request):
         if body.get("event") != "payment.succeeded":
             return {"ok": True}
 
-        obj      = body.get("object", {})
-        meta     = obj.get("metadata", {})
-        user_id  = int(meta.get("user_id", 0))
-        requests = int(meta.get("requests", 0))
-        amount   = float(obj.get("amount", {}).get("value", 0))
-        pay_id   = obj.get("id", "")
+        obj     = body.get("object", {})
+        meta    = obj.get("metadata", {})
+        user_id = int(meta.get("user_id", 0))
+        plan    = meta.get("plan", "")
+        pay_id  = obj.get("id", "")
 
-        if user_id and requests:
-            await db.add_balance(user_id, requests)
-            await db.add_transaction(user_id, amount, requests, pay_id)
+        if user_id and plan:
+            await db.activate_subscription(user_id, plan, pay_id)
+            plan_info = db.PLANS.get(plan, {})
             asyncio.create_task(send_tg_notification(
                 user_id,
-                f"✅ <b>Оплата прошла!</b>\n\n"
-                f"Добавлено <b>{requests} запросов</b> на ваш баланс.\n"
+                f"✅ <b>Подписка активирована!</b>\n\n"
+                f"Тариф: {plan_info.get('emoji','')} <b>{plan_info.get('name','')}</b>\n"
+                f"Запросов в месяц: <b>{plan_info.get('limit', 0)}</b>\n\n"
                 f"Приятного общения с Jingpt! 🚀"
             ))
     except Exception as e:

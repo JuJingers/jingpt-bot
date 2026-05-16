@@ -155,13 +155,13 @@
     .header-title { flex: 1; }
     .header-title h1 { font-size: 16px; font-weight: 700; }
     .header-title span { font-size: 12px; color: var(--text-muted); }
-    .balance-badge {
+    .plan-badge {
       background: var(--bg-secondary); border: 1px solid var(--border);
       border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600;
       cursor: pointer; display: flex; align-items: center; gap: 4px;
       transition: transform .15s, background .15s;
     }
-    .balance-badge:active { transform: scale(.95); background: var(--border); }
+    .plan-badge:active { transform: scale(.95); background: var(--border); }
 
     /* Сообщения */
     #messages {
@@ -337,15 +337,25 @@
     .user-info h3 { font-size: 18px; font-weight: 700; }
     .user-info p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
-    .balance-card {
+    /* ── Карточка подписки ── */
+    .sub-card {
       background: linear-gradient(135deg, #6366f1, #a78bfa);
       border-radius: var(--radius); padding: 20px; color: #fff;
       box-shadow: 0 8px 24px rgba(99,102,241,.3);
       animation: fadeInUp .4s .05s ease both;
     }
-    .balance-card .bc-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .8px; }
-    .balance-card .bc-amount { font-size: 48px; font-weight: 900; line-height: 1.1; margin: 4px 0; }
-    .balance-card .bc-sub { font-size: 13px; opacity: .8; }
+    .sub-card .sc-plan { font-size: 13px; opacity: .8; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
+    .sub-card .sc-used { font-size: 40px; font-weight: 900; line-height: 1.1; }
+    .sub-card .sc-limit { font-size: 14px; opacity: .85; margin-top: 2px; }
+    .sub-card .sc-expires { font-size: 12px; opacity: .7; margin-top: 8px; }
+
+    /* Прогресс-бар */
+    .usage-bar-wrap { margin-top: 14px; }
+    .usage-bar-labels { display: flex; justify-content: space-between; font-size: 12px; opacity: .8; margin-bottom: 6px; }
+    .usage-bar { height: 6px; background: rgba(255,255,255,.25); border-radius: 3px; overflow: hidden; }
+    .usage-bar-fill { height: 100%; background: #fff; border-radius: 3px; transition: width .6s ease; }
+    .usage-bar-fill.warn { background: #fbbf24; }
+    .usage-bar-fill.danger { background: #f87171; }
 
     .model-card {
       background: var(--bg-secondary); border: 1px solid var(--border);
@@ -358,26 +368,26 @@
     .model-info .mi-name { font-size: 15px; font-weight: 700; margin-top: 2px; }
 
     .section-title { font-size: 15px; font-weight: 700; animation: fadeInUp .4s .15s ease both; }
-    .packages { display: flex; flex-direction: column; gap: 10px; }
-
-    .pkg {
+    .plans { display: flex; flex-direction: column; gap: 10px; }
+    .plan-card {
       display: flex; align-items: center; justify-content: space-between;
       background: var(--bg-secondary); border: 1.5px solid var(--border);
       border-radius: var(--radius); padding: 15px 16px; cursor: pointer;
       transition: border-color .2s, transform .15s, background .15s;
       animation: fadeInUp .4s ease both;
     }
-    .pkg:nth-child(1) { animation-delay: .2s; }
-    .pkg:nth-child(2) { animation-delay: .25s; }
-    .pkg:nth-child(3) { animation-delay: .3s; }
-    .pkg:active { transform: scale(.97); background: var(--border); }
-    .pkg.popular { border-color: var(--accent); background: rgba(99,102,241,.06); }
-
-    .pkg-left .pkg-name { font-size: 15px; font-weight: 700; }
-    .pkg-left .pkg-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-    .pkg-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-    .pkg-price { font-size: 17px; font-weight: 800; color: var(--accent); }
-    .pkg-badge { font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 7px; }
+    .plan-card:nth-child(1) { animation-delay: .2s; }
+    .plan-card:nth-child(2) { animation-delay: .25s; }
+    .plan-card:nth-child(3) { animation-delay: .3s; }
+    .plan-card:active { transform: scale(.97); background: var(--border); }
+    .plan-card.popular { border-color: var(--accent); background: rgba(99,102,241,.06); }
+    .plan-card.current-plan { border-color: #22c55e; background: rgba(34,197,94,.06); cursor: default; }
+    .plan-left .plan-name { font-size: 15px; font-weight: 700; }
+    .plan-left .plan-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .plan-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .plan-price { font-size: 17px; font-weight: 800; color: var(--accent); }
+    .plan-badge { font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 7px; }
+    .plan-badge.green { background: #22c55e; }
   </style>
 </head>
 <body>
@@ -428,9 +438,9 @@
       <h1>Jingpt</h1>
       <span>Claude Opus 4.7</span>
     </div>
-    <div class="balance-badge" onclick="showProfile()">
-      <span>💎</span>
-      <span id="balance-num">—</span>
+    <div class="plan-badge" onclick="showProfile()">
+      <span id="plan-emoji">🆓</span>
+      <span id="plan-remaining">—</span>
     </div>
   </div>
 
@@ -471,10 +481,20 @@
       </div>
     </div>
 
-    <div class="balance-card">
-      <div class="bc-label">Баланс запросов</div>
-      <div class="bc-amount" id="profile-balance">—</div>
-      <div class="bc-sub">запросов осталось</div>
+    <div class="sub-card">
+      <div class="sc-plan" id="sc-plan-name">🆓 Бесплатно</div>
+      <div class="sc-used"><span id="sc-used">0</span> <span style="font-size:22px;opacity:.7">/ <span id="sc-limit">20</span></span></div>
+      <div class="sc-limit">запросов использовано в этом месяце</div>
+      <div class="sc-expires" id="sc-expires" style="display:none"></div>
+      <div class="usage-bar-wrap">
+        <div class="usage-bar-labels">
+          <span>Использовано</span>
+          <span id="sc-remaining">0 осталось</span>
+        </div>
+        <div class="usage-bar">
+          <div class="usage-bar-fill" id="usage-bar-fill" style="width:0%"></div>
+        </div>
+      </div>
     </div>
 
     <div class="model-card">
@@ -485,35 +505,35 @@
       </div>
     </div>
 
-    <div class="section-title">Пополнить баланс</div>
-    <div class="packages">
-      <div class="pkg" onclick="buyPackage(1, 15)">
-        <div class="pkg-left">
-          <div class="pkg-name">1 запрос</div>
-          <div class="pkg-desc">Разовый доступ</div>
+    <div class="section-title">Тарифы</div>
+    <div class="plans" id="plans-list">
+      <div class="plan-card" id="plan-start" onclick="buyPlan('start')">
+        <div class="plan-left">
+          <div class="plan-name">⚡ Старт</div>
+          <div class="plan-desc">200 запросов в месяц</div>
         </div>
-        <div class="pkg-right">
-          <div class="pkg-price">15 ₽</div>
-        </div>
-      </div>
-      <div class="pkg popular" onclick="buyPackage(10, 99)">
-        <div class="pkg-left">
-          <div class="pkg-name">10 запросов</div>
-          <div class="pkg-desc">Экономия 33%</div>
-        </div>
-        <div class="pkg-right">
-          <div class="pkg-price">99 ₽</div>
-          <div class="pkg-badge">🔥 Популярно</div>
+        <div class="plan-right">
+          <div class="plan-price">199 ₽/мес</div>
         </div>
       </div>
-      <div class="pkg" onclick="buyPackage(50, 349)">
-        <div class="pkg-left">
-          <div class="pkg-name">50 запросов</div>
-          <div class="pkg-desc">Экономия 53%</div>
+      <div class="plan-card popular" id="plan-pro" onclick="buyPlan('pro')">
+        <div class="plan-left">
+          <div class="plan-name">🚀 Про</div>
+          <div class="plan-desc">1000 запросов в месяц</div>
         </div>
-        <div class="pkg-right">
-          <div class="pkg-price">349 ₽</div>
-          <div class="pkg-badge">💎 Выгодно</div>
+        <div class="plan-right">
+          <div class="plan-price">499 ₽/мес</div>
+          <div class="plan-badge">🔥 Популярно</div>
+        </div>
+      </div>
+      <div class="plan-card" id="plan-max" onclick="buyPlan('max')">
+        <div class="plan-left">
+          <div class="plan-name">💎 Безлимит</div>
+          <div class="plan-desc">Без ограничений</div>
+        </div>
+        <div class="plan-right">
+          <div class="plan-price">999 ₽/мес</div>
+          <div class="plan-badge">👑 Всё включено</div>
         </div>
       </div>
     </div>
@@ -533,7 +553,7 @@ if (tg) { tg.ready(); tg.expand(); }
   if ((r*299 + g*587 + b*114) / 1000 < 128) document.body.classList.add('dark');
 })();
 
-let state = { userId: null, balance: 0, pendingFile: null };
+let state = { userId: null, subscription: null, pendingFile: null };
 
 // ── Сплэш ─────────────────────────────────────────────────────────────────
 function hideSplash() {
@@ -560,15 +580,15 @@ async function init() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    state.userId  = data.user.user_id;
-    state.balance = data.user.balance;
+    state.userId       = data.user.user_id;
+    state.subscription = data.subscription;
 
     const fn = data.user.first_name || '';
     const ln = data.user.last_name  || '';
     document.getElementById('user-name').textContent     = `${fn} ${ln}`.trim() || 'Пользователь';
     document.getElementById('user-username').textContent = data.user.username ? `@${data.user.username}` : '';
     document.getElementById('user-avatar').textContent   = (fn[0] || '?').toUpperCase();
-    updateBalance(state.balance);
+    updateSubscription(state.subscription);
 
     if (data.history?.length) {
       document.getElementById('empty-placeholder')?.remove();
@@ -586,15 +606,61 @@ function showScreen(id) {
 function enterApp()    { showScreen('chat'); }
 function showChat()    { showScreen('chat'); }
 function showProfile() {
-  document.getElementById('profile-balance').textContent = state.balance;
+  updateSubscription(state.subscription);
   showScreen('profile');
 }
 
-// ── Баланс ─────────────────────────────────────────────────────────────────
-function updateBalance(n) {
-  state.balance = n;
-  document.getElementById('balance-num').textContent = n;
-  document.getElementById('profile-balance').textContent = n;
+// ── Подписка ───────────────────────────────────────────────────────────────
+function updateSubscription(sub) {
+  if (!sub) return;
+  state.subscription = sub;
+
+  const used      = sub.used      || 0;
+  const limit     = sub.limit     || 20;
+  const remaining = sub.remaining || 0;
+  const plan      = sub.plan      || 'free';
+  const emoji     = sub.plan_emoji|| '🆓';
+  const planName  = sub.plan_name || 'Бесплатно';
+
+  // Шапка чата
+  document.getElementById('plan-emoji').textContent     = emoji;
+  document.getElementById('plan-remaining').textContent = remaining;
+
+  // Карточка подписки
+  document.getElementById('sc-plan-name').textContent  = `${emoji} ${planName}`;
+  document.getElementById('sc-used').textContent        = used;
+  document.getElementById('sc-limit').textContent       = limit >= 999999 ? '∞' : limit;
+  document.getElementById('sc-remaining').textContent   = remaining >= 999999 ? '∞ осталось' : `${remaining} осталось`;
+
+  // Прогресс-бар
+  const pct  = limit >= 999999 ? 10 : Math.min(100, (used / limit) * 100);
+  const fill = document.getElementById('usage-bar-fill');
+  fill.style.width = pct + '%';
+  fill.className   = 'usage-bar-fill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
+
+  // Дата истечения
+  const expiresEl = document.getElementById('sc-expires');
+  if (sub.expires && plan !== 'free') {
+    const d = new Date(sub.expires);
+    expiresEl.textContent  = `Подписка до ${d.toLocaleDateString('ru')}`;
+    expiresEl.style.display = '';
+  } else {
+    expiresEl.style.display = 'none';
+  }
+
+  // Текущий тариф выделяем
+  ['start','pro','max'].forEach(p => {
+    const el = document.getElementById(`plan-${p}`);
+    if (!el) return;
+    if (p === plan) {
+      el.classList.add('current-plan');
+      el.querySelector('.plan-right').innerHTML =
+        '<div class="plan-badge green">✓ Активен</div>';
+      el.onclick = null;
+    } else {
+      el.classList.remove('current-plan');
+    }
+  });
 }
 
 // ── Файл ───────────────────────────────────────────────────────────────────
@@ -683,7 +749,8 @@ async function sendMessage() {
   const file = state.pendingFile;
   if (!text && !file) return;
   if (!state.userId) { tg?.showAlert('Откройте приложение через Telegram'); return; }
-  if (state.balance <= 0) { showProfile(); tg?.showAlert('Баланс пуст — пополните, чтобы продолжить.'); return; }
+  const remaining = state.subscription?.remaining ?? 1;
+  if (remaining <= 0) { showProfile(); tg?.showAlert('Лимит запросов исчерпан — оформите подписку, чтобы продолжить.'); return; }
 
   renderMessage('user', text, file?.url);
   msgInput.value = ''; msgInput.style.height = 'auto';
@@ -698,11 +765,11 @@ async function sendMessage() {
       body: JSON.stringify({ user_id: state.userId, message: text, file_data: file?.data || null, file_type: file?.type || null, file_name: file?.name || null }),
     });
     hideTyping();
-    if (res.status === 402) { showProfile(); tg?.showAlert('Баланс пуст — пополните, чтобы продолжить.'); return; }
+    if (res.status === 402) { showProfile(); tg?.showAlert('Лимит исчерпан — оформите подписку, чтобы продолжить.'); return; }
     if (!res.ok) { renderMessage('assistant', '⚠️ Ошибка сервера. Попробуйте ещё раз.'); return; }
     const data = await res.json();
     renderMessage('assistant', data.response);
-    updateBalance(data.balance);
+    if (data.subscription) updateSubscription(data.subscription);
   } catch(e) {
     hideTyping();
     renderMessage('assistant', '⚠️ Нет соединения. Проверьте интернет.');
@@ -711,23 +778,21 @@ async function sendMessage() {
   }
 }
 
-// ── Оплата через ЮКассу ────────────────────────────────────────────────────
-async function buyPackage(requests, price) {
+// ── Оплата подписки через ЮКассу ──────────────────────────────────────────
+async function buyPlan(plan) {
   if (!state.userId) { tg?.showAlert('Откройте приложение через Telegram'); return; }
 
-  // Блокируем повторные нажатия
-  const btns = document.querySelectorAll('.pkg');
+  const btns = document.querySelectorAll('.plan-card');
   btns.forEach(b => b.style.pointerEvents = 'none');
 
   try {
     const res = await fetch(`${API}/api/payment/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: state.userId, requests, amount: price }),
+      body: JSON.stringify({ user_id: state.userId, plan }),
     });
     if (!res.ok) throw new Error('server');
     const data = await res.json();
-    // Открываем страницу оплаты ЮКассы
     tg?.openLink(data.url);
   } catch(e) {
     tg?.showAlert('Ошибка при создании платежа. Попробуйте позже или напишите @DadaYaKiruha');
