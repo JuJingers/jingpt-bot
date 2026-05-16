@@ -45,15 +45,31 @@ async def init_db():
                 pass
 
         await db.execute("""
+            CREATE TABLE IF NOT EXISTS chats (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                title      TEXT    DEFAULT 'Новый чат',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )
+        """)
+        await db.execute("""
             CREATE TABLE IF NOT EXISTS messages (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id    INTEGER NOT NULL,
+                chat_id    INTEGER DEFAULT NULL,
                 role       TEXT    NOT NULL,
                 content    TEXT    NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         """)
+        # Миграция: добавляем chat_id в существующую таблицу
+        try:
+            await db.execute("ALTER TABLE messages ADD COLUMN chat_id INTEGER DEFAULT NULL")
+            await db.commit()
+        except Exception:
+            pass
         # Миграция таблицы transactions: добавляем plan если нет
         try:
             await db.execute("ALTER TABLE transactions ADD COLUMN plan TEXT DEFAULT ''")
@@ -222,24 +238,108 @@ async def activate_subscription(user_id: int, plan: str, payment_id: str = ""):
         await db.commit()
 
 
-async def save_message(user_id: int, role: str, content: str):
+# ── Чаты ─────────────────────────────────────────────────────────────────────
+
+async def get_or_create_default_chat(user_id: int) -> dict:
+    """Возвращает первый чат пользователя, создаёт если нет."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM chats WHERE user_id = ? ORDER BY id ASC LIMIT 1", (user_id,)
+        ) as cur:
+            chat = await cur.fetchone()
+
+        if not chat:
+            await db.execute(
+                "INSERT INTO chats (user_id, title) VALUES (?, ?)",
+                (user_id, "Основной чат")
+            )
+            await db.commit()
+            async with db.execute(
+                "SELECT * FROM chats WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,)
+            ) as cur:
+                chat = await cur.fetchone()
+            # Привязываем старые сообщения без chat_id к этому чату
+            await db.execute(
+                "UPDATE messages SET chat_id = ? WHERE user_id = ? AND chat_id IS NULL",
+                (chat["id"], user_id)
+            )
+            await db.commit()
+
+        return dict(chat)
+
+
+async def get_user_chats(user_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT c.*,
+               (SELECT content FROM messages WHERE chat_id=c.id ORDER BY id DESC LIMIT 1) as last_msg,
+               (SELECT created_at FROM messages WHERE chat_id=c.id ORDER BY id DESC LIMIT 1) as last_at
+               FROM chats c WHERE c.user_id=? ORDER BY COALESCE(last_at, c.created_at) DESC""",
+            (user_id,)
+        ) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+
+async def create_chat(user_id: int, title: str = "Новый чат") -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute(
+            "INSERT INTO chats (user_id, title) VALUES (?, ?)", (user_id, title)
+        )
+        await db.commit()
+        async with db.execute(
+            "SELECT * FROM chats WHERE user_id=? ORDER BY id DESC LIMIT 1", (user_id,)
+        ) as cur:
+            return dict(await cur.fetchone())
+
+
+async def rename_chat(chat_id: int, user_id: int, title: str):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "INSERT INTO messages (user_id, role, content) VALUES (?, ?, ?)",
-            (user_id, role, content),
+            "UPDATE chats SET title=? WHERE id=? AND user_id=?", (title, chat_id, user_id)
         )
         await db.commit()
 
 
-async def get_chat_history(user_id: int, limit: int = 20) -> list[dict]:
+async def delete_chat(chat_id: int, user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM messages WHERE chat_id=? AND user_id=?", (chat_id, user_id)
+        )
+        await db.execute(
+            "DELETE FROM chats WHERE id=? AND user_id=?", (chat_id, user_id)
+        )
+        await db.commit()
+
+
+async def save_message(user_id: int, role: str, content: str, chat_id: int | None = None):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO messages (user_id, chat_id, role, content) VALUES (?, ?, ?, ?)",
+            (user_id, chat_id, role, content),
+        )
+        await db.commit()
+
+
+async def get_chat_history(user_id: int, limit: int = 20, chat_id: int | None = None) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute(
-            """SELECT role, content, created_at FROM messages
-               WHERE user_id = ? ORDER BY created_at DESC LIMIT ?""",
-            (user_id, limit),
-        ) as cur:
-            rows = await cur.fetchall()
+        if chat_id is not None:
+            async with db.execute(
+                """SELECT role, content, created_at FROM messages
+                   WHERE user_id=? AND chat_id=? ORDER BY id DESC LIMIT ?""",
+                (user_id, chat_id, limit),
+            ) as cur:
+                rows = await cur.fetchall()
+        else:
+            async with db.execute(
+                """SELECT role, content, created_at FROM messages
+                   WHERE user_id=? ORDER BY id DESC LIMIT ?""",
+                (user_id, limit),
+            ) as cur:
+                rows = await cur.fetchall()
         return [dict(r) for r in reversed(rows)]
 
 

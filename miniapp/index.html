@@ -137,24 +137,69 @@
     .btn-primary:active { transform: scale(.97); box-shadow: none; }
 
     /* ══════════════════════════════════════════════════════════════════════
+       СПИСОК ЧАТОВ
+    ══════════════════════════════════════════════════════════════════════ */
+    #chatlist { background: var(--bg); }
+    .chatlist-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      background: var(--bg); flex-shrink: 0;
+    }
+    .chatlist-header h2 { font-size: 17px; font-weight: 700; }
+    .new-chat-btn {
+      width: 36px; height: 36px; border-radius: 50%; border: none;
+      background: var(--accent); color: #fff; font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s; flex-shrink: 0;
+    }
+    .new-chat-btn:active { transform: scale(.9); }
+
+    .chats-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .chat-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px; cursor: pointer;
+      transition: background .15s; border-bottom: 1px solid var(--border);
+    }
+    .chat-item:active { background: var(--bg-secondary); }
+    .chat-item-icon {
+      width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .chat-item-info { flex: 1; min-width: 0; }
+    .chat-item-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-item-preview { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-item-del {
+      width: 32px; height: 32px; border-radius: 50%; border: none;
+      background: none; color: var(--text-muted); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color .15s, background .15s; flex-shrink: 0;
+    }
+    .chat-item-del:active { color: #ef4444; background: rgba(239,68,68,.1); }
+    .chats-empty { text-align: center; padding: 60px 24px; color: var(--text-muted); line-height: 1.7; }
+    .chat-item.active { background: rgba(99,102,241,.08); }
+    .chats-list { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+
+    /* ══════════════════════════════════════════════════════════════════════
        ЧАТ
     ══════════════════════════════════════════════════════════════════════ */
     #chat { background: var(--bg); width: 100vw; overflow: hidden; }
 
     .chat-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--border);
       background: var(--bg); flex-shrink: 0;
     }
     .header-logo {
-      width: 36px; height: 36px; border-radius: 10px;
+      width: 34px; height: 34px; border-radius: 10px;
       background: url('/miniapp/logo.png') center/cover no-repeat;
-      flex-shrink: 0;
+      flex-shrink: 0; cursor: pointer;
     }
-    .header-title { flex: 1; }
-    .header-title h1 { font-size: 16px; font-weight: 700; }
-    .header-title span { font-size: 12px; color: var(--text-muted); }
+    .header-title { flex: 1; min-width: 0; cursor: pointer; }
+    .header-title h1 { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-title span { font-size: 11px; color: var(--text-muted); }
     .plan-badge {
       background: var(--bg-secondary); border: 1px solid var(--border);
       border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600;
@@ -430,12 +475,23 @@
   <button class="btn-primary" onclick="enterApp()">Открыть Jingpt →</button>
 </div>
 
+<!-- ── СПИСОК ЧАТОВ ───────────────────────────────────────────────────── -->
+<div id="chatlist" class="screen hidden">
+  <div class="chatlist-header">
+    <h2>Мои чаты</h2>
+    <button class="new-chat-btn" onclick="newChat()" title="Новый чат">+</button>
+  </div>
+  <div class="chats-list" id="chats-list">
+    <div class="chats-empty">Загрузка…</div>
+  </div>
+</div>
+
 <!-- ── ЧАТ ──────────────────────────────────────────────────────────────── -->
 <div id="chat" class="screen hidden">
   <div class="chat-header">
-    <div class="header-logo"></div>
-    <div class="header-title">
-      <h1>Jingpt</h1>
+    <button class="icon-btn" onclick="showChatList()" style="background:none;font-size:22px;color:var(--text)">☰</button>
+    <div class="header-title" onclick="showChatList()" style="cursor:pointer">
+      <h1 id="chat-title">Jingpt</h1>
       <span>Claude Opus 4.7</span>
     </div>
     <div class="plan-badge" onclick="showProfile()">
@@ -562,7 +618,7 @@ if (tg) { tg.ready(); tg.expand(); }
   if ((r*299 + g*587 + b*114) / 1000 < 128) document.body.classList.add('dark');
 })();
 
-let state = { userId: null, subscription: null, pendingFile: null };
+let state = { userId: null, subscription: null, pendingFile: null, chatId: null, chats: [] };
 
 // ── Сплэш ─────────────────────────────────────────────────────────────────
 function hideSplash() {
@@ -591,6 +647,8 @@ async function init() {
     const data = await res.json();
     state.userId       = data.user.user_id;
     state.subscription = data.subscription;
+    state.chats        = data.chats || [];
+    state.chatId       = data.current_chat?.id || null;
 
     const fn = data.user.first_name || '';
     const ln = data.user.last_name  || '';
@@ -598,6 +656,10 @@ async function init() {
     document.getElementById('user-username').textContent = data.user.username ? `@${data.user.username}` : '';
     document.getElementById('user-avatar').textContent   = (fn[0] || '?').toUpperCase();
     updateSubscription(state.subscription);
+
+    if (data.current_chat?.title) {
+      document.getElementById('chat-title').textContent = data.current_chat.title;
+    }
 
     if (data.history?.length) {
       document.getElementById('empty-placeholder')?.remove();
@@ -608,7 +670,7 @@ async function init() {
 
 // ── Навигация ──────────────────────────────────────────────────────────────
 function showScreen(id) {
-  ['landing','chat','profile'].forEach(s =>
+  ['landing','chatlist','chat','profile'].forEach(s =>
     document.getElementById(s).classList.toggle('hidden', s !== id)
   );
 }
@@ -617,6 +679,98 @@ function showChat()    { showScreen('chat'); }
 function showProfile() {
   updateSubscription(state.subscription);
   showScreen('profile');
+}
+
+// ── Список чатов ───────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderChatList(chats) {
+  const list = document.getElementById('chats-list');
+  if (!chats || !chats.length) {
+    list.innerHTML = '<div class="chats-empty">Нет чатов.<br>Нажмите + чтобы создать первый.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  chats.forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'chat-item' + (chat.id === state.chatId ? ' active' : '');
+    item.innerHTML = `
+      <div class="chat-item-icon">💬</div>
+      <div class="chat-item-info">
+        <div class="chat-item-title">${escHtml(chat.title || 'Новый чат')}</div>
+        <div class="chat-item-preview">${escHtml(chat.last_msg || 'Нет сообщений')}</div>
+      </div>
+      <button class="chat-item-del" onclick="event.stopPropagation();deleteChat(${chat.id})">🗑</button>
+    `;
+    item.addEventListener('click', () => openChat(chat));
+    list.appendChild(item);
+  });
+}
+
+function showChatList() {
+  renderChatList(state.chats);
+  showScreen('chatlist');
+}
+
+async function openChat(chat) {
+  state.chatId = chat.id;
+  document.getElementById('chat-title').textContent = chat.title || 'Новый чат';
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '<div class="empty-chat" id="empty-placeholder"><div class="empty-icon">🤖</div><h2>Привет! Я Jingpt</h2><p>Задай любой вопрос или прикрепи файл — помогу разобраться.</p></div>';
+  showScreen('chat');
+  if (!state.userId) return;
+  try {
+    const res = await fetch(`${API}/api/chats/history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: state.userId, chat_id: chat.id }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.history?.length) {
+      document.getElementById('empty-placeholder')?.remove();
+      data.history.forEach(m => renderMessage(m.role, m.content, null, false));
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function newChat() {
+  if (!state.userId) { showScreen('chat'); return; }
+  try {
+    const res = await fetch(`${API}/api/chats/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: state.userId, title: 'Новый чат' }),
+    });
+    if (!res.ok) return;
+    const chat = await res.json();
+    state.chats.unshift(chat);
+    openChat(chat);
+  } catch(e) { console.error(e); }
+}
+
+async function deleteChat(chatId) {
+  if (!state.userId) return;
+  const confirmed = await new Promise(r =>
+    tg ? tg.showConfirm('Удалить этот чат?', r) : r(confirm('Удалить этот чат?'))
+  );
+  if (!confirmed) return;
+  try {
+    await fetch(`${API}/api/chats/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: state.userId, chat_id: chatId }),
+    });
+    state.chats = state.chats.filter(c => c.id !== chatId);
+    if (state.chatId === chatId) {
+      if (state.chats.length) openChat(state.chats[0]);
+      else newChat();
+    } else {
+      renderChatList(state.chats);
+    }
+  } catch(e) { console.error(e); }
 }
 
 // ── Подписка ───────────────────────────────────────────────────────────────
@@ -771,7 +925,7 @@ async function sendMessage() {
     const res = await fetch(`${API}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: state.userId, message: text, file_data: file?.data || null, file_type: file?.type || null, file_name: file?.name || null }),
+      body: JSON.stringify({ user_id: state.userId, chat_id: state.chatId, message: text, file_data: file?.data || null, file_type: file?.type || null, file_name: file?.name || null }),
     });
     hideTyping();
     if (res.status === 402) { showProfile(); tg?.showAlert('Лимит исчерпан — оформите подписку, чтобы продолжить.'); return; }
@@ -779,6 +933,18 @@ async function sendMessage() {
     const data = await res.json();
     renderMessage('assistant', data.response);
     if (data.subscription) updateSubscription(data.subscription);
+    // Обновляем название чата если это было первое сообщение
+    if (text && state.chatId) {
+      const chat = state.chats.find(c => c.id === state.chatId);
+      if (chat && (chat.title === 'Новый чат' || !chat.last_msg)) {
+        const newTitle = text.slice(0, 40) + (text.length > 40 ? '…' : '');
+        chat.title = newTitle;
+        chat.last_msg = text;
+        document.getElementById('chat-title').textContent = newTitle;
+      } else if (chat) {
+        chat.last_msg = text;
+      }
+    }
   } catch(e) {
     hideTyping();
     renderMessage('assistant', '⚠️ Нет соединения. Проверьте интернет.');
