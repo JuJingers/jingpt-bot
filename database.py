@@ -6,7 +6,7 @@ DB_PATH = os.environ.get("DB_PATH", "jingpt.db")
 
 # ── Тарифы ───────────────────────────────────────────────────────────────────
 PLANS = {
-    "free":  {"name": "Бесплатно", "limit": 20,     "price": 0,   "emoji": "🆓"},
+    "free":  {"name": "Бесплатно", "limit": 10,     "price": 0,   "emoji": "🆓"},
     "start": {"name": "Старт",     "limit": 200,    "price": 199, "emoji": "⚡"},
     "pro":   {"name": "Про",       "limit": 1000,   "price": 499, "emoji": "🚀"},
     "max":   {"name": "Безлимит",  "limit": 999999, "price": 999, "emoji": "💎"},

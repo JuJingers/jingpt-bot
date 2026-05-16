@@ -65,32 +65,54 @@ async def cmd_start(message: Message):
         f"✍️ Тексты, код, переводы\n"
         f"🧠 Решение сложных задач\n"
         f"━━━━━━━━━━━━━━━\n\n"
+        f"🆓 Тариф: <b>Бесплатно</b> — 10 запросов в месяц\n\n"
         f"📋 <b>Команды:</b>\n"
-        f"/balance — проверить баланс\n"
-        f"/help — помощь и тарифы\n\n"
-        f"💎 Твой баланс: <b>{user['balance']} запросов</b>\n\n"
+        f"/plan — моя подписка\n"
+        f"/help — тарифы и помощь\n\n"
         f"Нажми кнопку ниже и начни общение 👇",
         parse_mode="HTML",
         reply_markup=main_keyboard(),
     )
 
 
-# ── /balance ──────────────────────────────────────────────────────────────────
+# ── /plan ─────────────────────────────────────────────────────────────────────
+@dp.message(Command("plan"))
 @dp.message(Command("balance"))
-async def cmd_balance(message: Message):
+async def cmd_plan(message: Message):
     user = await db.get_or_create_user(
         user_id    = message.from_user.id,
         username   = message.from_user.username   or "",
         first_name = message.from_user.first_name or "",
         last_name  = message.from_user.last_name  or "",
     )
-    balance = user["balance"]
-    if balance == 0:
-        text = "💔 Баланс пуст. Пополните, чтобы продолжить общение."
-    elif balance <= 3:
-        text = f"⚠️ Баланс: <b>{balance} запр.</b> — заканчивается, пополните заранее."
-    else:
-        text = f"💎 Баланс: <b>{balance} запросов</b>"
+    sub = await db.get_subscription(message.from_user.id)
+    plan_emoji = sub.get("plan_emoji", "🆓")
+    plan_name  = sub.get("plan_name",  "Бесплатно")
+    used       = sub.get("used",       0)
+    limit      = sub.get("limit",      10)
+    remaining  = sub.get("remaining",  0)
+    expires    = sub.get("expires")
+
+    limit_str = "∞" if limit >= 999999 else str(limit)
+    rem_str   = "∞" if remaining >= 999999 else str(remaining)
+
+    text = (
+        f"{plan_emoji} <b>Тариф: {plan_name}</b>\n\n"
+        f"📊 Использовано: <b>{used} / {limit_str}</b> запросов\n"
+        f"✅ Осталось: <b>{rem_str}</b>\n"
+    )
+    if expires and sub.get("plan") != "free":
+        from datetime import datetime
+        try:
+            d = datetime.fromisoformat(expires)
+            text += f"📅 Действует до: <b>{d.strftime('%d.%m.%Y')}</b>\n"
+        except Exception:
+            pass
+
+    if remaining == 0:
+        text += "\n⚠️ Лимит исчерпан — оформите подписку в приложении!"
+    elif remaining <= 3:
+        text += f"\n⚠️ Осталось мало запросов — обновите подписку заранее!"
 
     await message.answer(text, parse_mode="HTML", reply_markup=buy_keyboard())
 
@@ -102,16 +124,17 @@ async def cmd_help(message: Message):
         "📖 <b>Как пользоваться Jingpt</b>\n\n"
         "<b>Команды:</b>\n"
         "/start — главное меню\n"
-        "/balance — проверить баланс\n"
+        "/plan — моя подписка и лимиты\n"
         "/help — эта справка\n\n"
         "<b>Возможности:</b>\n"
-        "• Просто пиши сообщение — отвечу\n"
-        "• Прикрепляй файлы через приложение\n"
+        "• Общение с AI через приложение\n"
+        "• Прикрепляй файлы и фото\n"
         "• Бот помнит контекст диалога\n\n"
-        "<b>Тарифы:</b>\n"
-        "• 1 запрос — 15 ₽\n"
-        "• 10 запросов — 99 ₽\n"
-        "• 50 запросов — 349 ₽\n\n"
+        "<b>Тарифы (в месяц):</b>\n"
+        "🆓 Бесплатно — 10 запросов\n"
+        "⚡ Старт — 200 запросов / 199 ₽\n"
+        "🚀 Про — 1000 запросов / 499 ₽\n"
+        "💎 Безлимит — ∞ запросов / 999 ₽\n\n"
         "По вопросам: @DadaYaKiruha",
         parse_mode="HTML",
         reply_markup=main_keyboard(),
