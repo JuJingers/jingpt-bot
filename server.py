@@ -1,8 +1,10 @@
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
 import os
+import uuid
 from urllib.parse import parse_qsl
 
 import httpx
@@ -21,6 +23,15 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN",   "8563490950:AAHNoSzdlubo
 ADMIN_PASSWORD     = os.environ.get("ADMIN_PASSWORD",   "jingpt_admin_2024")
 CLAUDE_MODEL       = "claude-opus-4-7"
 CLAUDE_BASE_URL    = "https://api.tokenator.cloud/anthropic"
+
+# ── ЮКасса ───────────────────────────────────────────────────────────────────
+YOOKASSA_SHOP_ID = os.environ.get("YOOKASSA_SHOP_ID", "1353241")
+YOOKASSA_SECRET  = os.environ.get("YOOKASSA_SECRET",  "live_mavWmxI_9vEbol_0r3LPbvJMPfGz1AY793KXdQFdzhs")
+YOOKASSA_API     = "https://api.yookassa.ru/v3"
+
+def yookassa_headers():
+    creds = base64.b64encode(f"{YOOKASSA_SHOP_ID}:{YOOKASSA_SECRET}".encode()).decode()
+    return {"Authorization": f"Basic {creds}", "Content-Type": "application/json"}
 
 claude = anthropic.Anthropic(
     api_key=ANTHROPIC_API_KEY,
@@ -277,6 +288,72 @@ async def admin_block(request: Request, req: BlockRequest):
         raise HTTPException(404, "User not found")
     await db.set_blocked(req.user_id, req.blocked)
     return {"ok": True, "blocked": req.blocked}
+
+# ── ЮКасса: создание платежа ──────────────────────────────────────────────────
+class PaymentRequest(BaseModel):
+    user_id:  int
+    requests: int   # кол-во запросов
+    amount:   int   # сумма в рублях
+
+PACKAGES = {1: 15, 10: 99, 50: 349}   # requests → price
+
+@app.post("/api/payment/create")
+async def payment_create(req: PaymentRequest):
+    user = await db.get_user(req.user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    if PACKAGES.get(req.requests) != req.amount:
+        raise HTTPException(400, "Invalid package")
+
+    payload = {
+        "amount":       {"value": f"{req.amount}.00", "currency": "RUB"},
+        "confirmation": {"type": "redirect", "return_url": MINIAPP_URL},
+        "capture":      True,
+        "description":  f"Jingpt — {req.requests} запросов",
+        "metadata":     {"user_id": str(req.user_id), "requests": str(req.requests)},
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{YOOKASSA_API}/payments",
+            json=payload,
+            headers={**yookassa_headers(), "Idempotence-Key": str(uuid.uuid4())},
+            timeout=10,
+        )
+    if resp.status_code not in (200, 201):
+        raise HTTPException(500, f"YooKassa error: {resp.text}")
+
+    data = resp.json()
+    return {"url": data["confirmation"]["confirmation_url"], "payment_id": data["id"]}
+
+
+# ── ЮКасса: вебхук ─────────────────────────────────────────────────────────────
+@app.post("/api/payment/webhook")
+async def payment_webhook(request: Request):
+    try:
+        body = await request.json()
+        if body.get("event") != "payment.succeeded":
+            return {"ok": True}
+
+        obj      = body.get("object", {})
+        meta     = obj.get("metadata", {})
+        user_id  = int(meta.get("user_id", 0))
+        requests = int(meta.get("requests", 0))
+        amount   = float(obj.get("amount", {}).get("value", 0))
+        pay_id   = obj.get("id", "")
+
+        if user_id and requests:
+            await db.add_balance(user_id, requests)
+            await db.add_transaction(user_id, amount, requests, pay_id)
+            asyncio.create_task(send_tg_notification(
+                user_id,
+                f"✅ <b>Оплата прошла!</b>\n\n"
+                f"Добавлено <b>{requests} запросов</b> на ваш баланс.\n"
+                f"Приятного общения с Jingpt! 🚀"
+            ))
+    except Exception as e:
+        print(f"Webhook error: {e}")
+    return {"ok": True}
+
 
 # ── Статические файлы Mini App ─────────────────────────────────────────────────
 app.mount("/miniapp", StaticFiles(directory="miniapp", html=True), name="miniapp")

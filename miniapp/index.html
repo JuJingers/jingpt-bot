@@ -711,9 +711,29 @@ async function sendMessage() {
   }
 }
 
-// ── Оплата (заглушка) ──────────────────────────────────────────────────────
-function buyPackage(requests, price) {
-  tg?.showAlert(`Оплата ${price} ₽ за ${requests} запр.\n\nФункция оплаты будет добавлена совсем скоро!\n\nПо вопросам: @DadaYaKiruha`);
+// ── Оплата через ЮКассу ────────────────────────────────────────────────────
+async function buyPackage(requests, price) {
+  if (!state.userId) { tg?.showAlert('Откройте приложение через Telegram'); return; }
+
+  // Блокируем повторные нажатия
+  const btns = document.querySelectorAll('.pkg');
+  btns.forEach(b => b.style.pointerEvents = 'none');
+
+  try {
+    const res = await fetch(`${API}/api/payment/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: state.userId, requests, amount: price }),
+    });
+    if (!res.ok) throw new Error('server');
+    const data = await res.json();
+    // Открываем страницу оплаты ЮКассы
+    tg?.openLink(data.url);
+  } catch(e) {
+    tg?.showAlert('Ошибка при создании платежа. Попробуйте позже или напишите @DadaYaKiruha');
+  } finally {
+    btns.forEach(b => b.style.pointerEvents = '');
+  }
 }
 
 // ── iOS viewport fix ───────────────────────────────────────────────────────
