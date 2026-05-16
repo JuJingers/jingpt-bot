@@ -36,7 +36,7 @@ async def init_db():
             ("subscription_type",    "TEXT DEFAULT 'free'"),
             ("subscription_expires", "TIMESTAMP DEFAULT NULL"),
             ("requests_used",        "INTEGER DEFAULT 0"),
-            ("requests_reset_at",    "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            ("requests_reset_at",    "TIMESTAMP DEFAULT NULL"),
         ]:
             try:
                 await db.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
