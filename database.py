@@ -187,8 +187,9 @@ async def get_subscription(user_id: int) -> dict:
         "plan_name": plan_info["name"],
         "plan_emoji":plan_info["emoji"],
         "limit":     limit,
-        "used":      max(0, used),          # бонус может уйти в минус — показываем 0
-        "remaining": max(0, limit - used),  # а remaining считаем честно
+        "used":      max(0, used),                      # бонус уходит в минус — показываем 0
+        "remaining": max(0, limit - used),              # честный остаток с учётом бонуса
+        "limit":     max(0, used) + max(0, limit - used),  # эффективный лимит = used + remaining
         "expires":   str(expires) if expires else None,
     }
 
