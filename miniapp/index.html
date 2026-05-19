@@ -1045,7 +1045,7 @@ async function loadReferral() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    const botUsername = 'JinGPTBot'; // имя бота
+    const botUsername = 'NeyronServiseBot';
     refLink = `https://t.me/${botUsername}?start=ref_${data.code}`;
     document.getElementById('ref-link').textContent     = refLink;
     document.getElementById('ref-total').textContent    = data.stats.total;
