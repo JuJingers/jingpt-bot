@@ -32,11 +32,12 @@ async def init_db():
         """)
         # Миграция существующих баз
         for col, definition in [
-            ("is_blocked",           "INTEGER DEFAULT 0"),
-            ("subscription_type",    "TEXT DEFAULT 'free'"),
-            ("subscription_expires", "TIMESTAMP DEFAULT NULL"),
-            ("requests_used",        "INTEGER DEFAULT 0"),
-            ("requests_reset_at",    "TIMESTAMP DEFAULT NULL"),
+            ("is_blocked",              "INTEGER DEFAULT 0"),
+            ("subscription_type",       "TEXT DEFAULT 'free'"),
+            ("subscription_expires",    "TIMESTAMP DEFAULT NULL"),
+            ("requests_used",           "INTEGER DEFAULT 0"),
+            ("requests_reset_at",       "TIMESTAMP DEFAULT NULL"),
+            ("channel_bonus_claimed",   "INTEGER DEFAULT 0"),
         ]:
             try:
                 await db.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
@@ -354,6 +355,33 @@ async def set_blocked(user_id: int, blocked: bool):
             (1 if blocked else 0, user_id)
         )
         await db.commit()
+
+
+async def claim_channel_bonus(user_id: int) -> dict:
+    """
+    Начисляет +5 запросов за подписку на канал (разово).
+    Возвращает {"ok": True} или {"ok": False, "reason": "..."}
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT channel_bonus_claimed, requests_used FROM users WHERE user_id = ?", (user_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if not row:
+            return {"ok": False, "reason": "user_not_found"}
+        if row["channel_bonus_claimed"]:
+            return {"ok": False, "reason": "already_claimed"}
+        # Вычитаем 5 из requests_used (уйдёт в минус → +5 к remaining)
+        await db.execute(
+            """UPDATE users
+               SET requests_used = requests_used - 5,
+                   channel_bonus_claimed = 1
+               WHERE user_id = ?""",
+            (user_id,)
+        )
+        await db.commit()
+    return {"ok": True}
 
 
 # Оставляем для совместимости с админкой

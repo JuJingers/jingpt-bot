@@ -425,6 +425,57 @@ async def payment_webhook(request: Request):
     return {"ok": True}
 
 
+# ── Бонус за подписку на канал ────────────────────────────────────────────────
+BONUS_CHANNEL = "@cloudeinJIN"
+BONUS_REQUESTS = 5
+
+class BonusRequest(BaseModel):
+    user_id: int
+
+async def check_channel_member(user_id: int) -> bool:
+    """Проверяет, подписан ли пользователь на канал через Bot API."""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getChatMember"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                json={"chat_id": BONUS_CHANNEL, "user_id": user_id},
+                timeout=5,
+            )
+        data = resp.json()
+        status = data.get("result", {}).get("status", "")
+        return status in ("member", "administrator", "creator")
+    except Exception as e:
+        print(f"check_channel_member error: {e}")
+        return False
+
+@app.post("/api/bonus/channel")
+async def bonus_channel(req: BonusRequest):
+    user = await db.get_user(req.user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # Уже получил бонус?
+    if user.get("channel_bonus_claimed"):
+        raise HTTPException(409, "already_claimed")
+
+    # Проверяем подписку
+    is_member = await check_channel_member(req.user_id)
+    if not is_member:
+        raise HTTPException(403, "not_subscribed")
+
+    # Начисляем бонус
+    result = await db.claim_channel_bonus(req.user_id)
+    if not result["ok"]:
+        reason = result.get("reason", "")
+        if reason == "already_claimed":
+            raise HTTPException(409, "already_claimed")
+        raise HTTPException(400, reason)
+
+    sub = await db.get_subscription(req.user_id)
+    return {"ok": True, "bonus": BONUS_REQUESTS, "subscription": sub}
+
+
 # ── Статические файлы Mini App ─────────────────────────────────────────────────
 app.mount("/miniapp", StaticFiles(directory="miniapp", html=True), name="miniapp")
 

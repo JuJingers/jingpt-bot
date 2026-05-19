@@ -125,6 +125,7 @@ async def cmd_help(message: Message):
         "<b>Команды:</b>\n"
         "/start — главное меню\n"
         "/plan — моя подписка и лимиты\n"
+        "/bonus — получить +5 запросов бесплатно\n"
         "/help — эта справка\n\n"
         "<b>Возможности:</b>\n"
         "• Общение с AI через приложение\n"
@@ -138,6 +139,45 @@ async def cmd_help(message: Message):
         "По вопросам: @DadaYaKiruha",
         parse_mode="HTML",
         reply_markup=main_keyboard(),
+    )
+
+
+# ── /bonus ────────────────────────────────────────────────────────────────────
+@dp.message(Command("bonus"))
+async def cmd_bonus(message: Message):
+    user = await db.get_or_create_user(
+        user_id    = message.from_user.id,
+        username   = message.from_user.username   or "",
+        first_name = message.from_user.first_name or "",
+        last_name  = message.from_user.last_name  or "",
+    )
+    if user.get("is_blocked"):
+        await message.answer("🚫 Ваш аккаунт заблокирован.")
+        return
+
+    if user.get("channel_bonus_claimed"):
+        sub = await db.get_subscription(message.from_user.id)
+        rem = sub.get("remaining", 0)
+        await message.answer(
+            "✅ Вы уже получили бонус за подписку!\n\n"
+            f"Осталось запросов: <b>{rem}</b>",
+            parse_mode="HTML",
+            reply_markup=main_keyboard(),
+        )
+        return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📢 Подписаться на канал", url="https://t.me/cloudeinJIN")],
+        [InlineKeyboardButton(text="✅ Я подписался — получить +5 запросов",
+                              web_app=WebAppInfo(url=MINIAPP_URL))],
+    ])
+    await message.answer(
+        "🎁 <b>Получи +5 запросов бесплатно!</b>\n\n"
+        "1️⃣ Подпишись на наш канал — @cloudeinJIN\n"
+        "2️⃣ Нажми кнопку ниже чтобы подтвердить\n\n"
+        "Бонус начисляется один раз и действует до конца месяца 🔥",
+        parse_mode="HTML",
+        reply_markup=keyboard,
     )
 
 
