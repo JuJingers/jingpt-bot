@@ -6,3 +6,4 @@ fastapi
 uvicorn[standard]
 aiosqlite
 python-multipart
+feedparser

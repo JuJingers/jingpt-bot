@@ -10,6 +10,7 @@ import anthropic
 
 import database as db
 from server import app
+from news_agent import news_agent_loop, run_digest
 
 # ── Настройки ─────────────────────────────────────────────────────────────────
 TELEGRAM_TOKEN    = os.environ.get("TELEGRAM_TOKEN", "8563490950:AAHNoSzdlubomAUPk1M_JG4s8v690ciTNLk")
@@ -280,6 +281,17 @@ async def handle_text(message: Message):
     )
 
 
+# ── /digest — ручной запуск дайджеста (только для админа) ────────────────────
+ADMIN_ID = 821139020
+
+@dp.message(Command("digest"))
+async def cmd_digest(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("🗞 Запускаю сбор новостей, подожди пару минут…")
+    asyncio.create_task(run_digest())
+
+
 # ── Периодические напоминания о рефералке ────────────────────────────────────
 async def ref_reminder_loop():
     """Каждые 3 дня отправляет напоминание о реферальной программе."""
@@ -335,7 +347,7 @@ async def run_server():
     await server.serve()
 
 async def main():
-    await asyncio.gather(run_server(), run_bot(), ref_reminder_loop())
+    await asyncio.gather(run_server(), run_bot(), ref_reminder_loop(), news_agent_loop())
 
 if __name__ == "__main__":
     asyncio.run(main())
