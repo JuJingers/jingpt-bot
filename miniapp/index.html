@@ -450,6 +450,37 @@
     .bonus-info .bonus-sub   { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 2px; }
     .bonus-card.claimed .bonus-info .bonus-title { color: var(--text-muted); }
     .bonus-card.claimed .bonus-info .bonus-sub   { color: var(--text-muted); }
+
+    /* ── Реферальный блок ─────────────────────────────────────────────────── */
+    .ref-card {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      animation: fadeInUp .4s .22s ease both;
+    }
+    .ref-card-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .ref-card-desc  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .ref-link-row   { display: flex; align-items: center; gap: 8px; }
+    .ref-link-box {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px;
+      font-size: 12px; color: var(--text-muted); word-break: break-all;
+      font-family: monospace;
+    }
+    .ref-copy-btn {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; border: none;
+      background: var(--accent); color: #fff; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s;
+    }
+    .ref-copy-btn:active { transform: scale(.9); }
+    .ref-stats { display: flex; gap: 10px; }
+    .ref-stat {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px; text-align: center;
+    }
+    .ref-stat-val  { font-size: 22px; font-weight: 800; color: var(--accent); }
+    .ref-stat-lbl  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -579,6 +610,26 @@
       </div>
     </div>
 
+    <!-- Реферальная программа -->
+    <div class="ref-card" id="ref-card">
+      <div class="ref-card-title">👥 Пригласи друга</div>
+      <div class="ref-card-desc">Друг покупает любую подписку — ты получаешь ⚡ <b>Старт</b> на 30 дней бесплатно!</div>
+      <div class="ref-link-row">
+        <div class="ref-link-box" id="ref-link">Загрузка…</div>
+        <button class="ref-copy-btn" onclick="copyRefLink()" title="Скопировать">📋</button>
+      </div>
+      <div class="ref-stats">
+        <div class="ref-stat">
+          <div class="ref-stat-val" id="ref-total">—</div>
+          <div class="ref-stat-lbl">перешли</div>
+        </div>
+        <div class="ref-stat">
+          <div class="ref-stat-val" id="ref-rewarded">—</div>
+          <div class="ref-stat-lbl">купили подписку</div>
+        </div>
+      </div>
+    </div>
+
     <div class="model-card">
       <div class="model-icon">⚡</div>
       <div class="model-info">
@@ -705,6 +756,7 @@ function enterApp()    { showScreen('chat'); }
 function showChat()    { showScreen('chat'); }
 function showProfile() {
   updateSubscription(state.subscription);
+  loadReferral();
   showScreen('profile');
 }
 
@@ -978,6 +1030,43 @@ async function sendMessage() {
   } finally {
     document.getElementById('send-btn').disabled = false;
   }
+}
+
+// ── Реферальная программа ─────────────────────────────────────────────────
+let refLink = '';
+
+async function loadReferral() {
+  if (!state.userId) return;
+  try {
+    const res = await fetch(`${API}/api/referral/info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: state.userId }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const botUsername = 'JinGPTBot'; // имя бота
+    refLink = `https://t.me/${botUsername}?start=ref_${data.code}`;
+    document.getElementById('ref-link').textContent     = refLink;
+    document.getElementById('ref-total').textContent    = data.stats.total;
+    document.getElementById('ref-rewarded').textContent = data.stats.rewarded;
+  } catch(e) { console.error(e); }
+}
+
+function copyRefLink() {
+  if (!refLink) return;
+  navigator.clipboard?.writeText(refLink).then(() => {
+    tg?.showAlert('Ссылка скопирована! Отправь её другу 🚀');
+  }).catch(() => {
+    // fallback для старых браузеров
+    const el = document.createElement('textarea');
+    el.value = refLink;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    tg?.showAlert('Ссылка скопирована!');
+  });
 }
 
 // ── Бонус за подписку на канал ────────────────────────────────────────────
