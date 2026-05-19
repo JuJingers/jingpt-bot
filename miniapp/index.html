@@ -433,6 +433,23 @@
     .plan-price { font-size: 17px; font-weight: 800; color: var(--accent); }
     .plan-badge { font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 7px; }
     .plan-badge.green { background: #22c55e; }
+
+    /* ── Бонус-кнопка ─────────────────────────────────────────────────────── */
+    .bonus-card {
+      border-radius: var(--radius); padding: 16px 18px;
+      background: linear-gradient(135deg, #f59e0b, #fb923c);
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 6px 20px rgba(245,158,11,.3);
+      animation: fadeInUp .4s .18s ease both;
+    }
+    .bonus-card:active { transform: scale(.97); box-shadow: none; }
+    .bonus-card.claimed { background: var(--bg-secondary); border: 1px solid var(--border); cursor: default; box-shadow: none; }
+    .bonus-icon { font-size: 28px; flex-shrink: 0; }
+    .bonus-info .bonus-title { font-size: 15px; font-weight: 700; color: #fff; }
+    .bonus-info .bonus-sub   { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 2px; }
+    .bonus-card.claimed .bonus-info .bonus-title { color: var(--text-muted); }
+    .bonus-card.claimed .bonus-info .bonus-sub   { color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -553,6 +570,15 @@
       </div>
     </div>
 
+    <!-- Бонус за подписку -->
+    <div class="bonus-card" id="bonus-card" onclick="claimBonus()">
+      <div class="bonus-icon">🎁</div>
+      <div class="bonus-info">
+        <div class="bonus-title">+5 запросов бесплатно</div>
+        <div class="bonus-sub">Подпишись на @cloudeinJIN и получи бонус</div>
+      </div>
+    </div>
+
     <div class="model-card">
       <div class="model-icon">⚡</div>
       <div class="model-info">
@@ -656,6 +682,7 @@ async function init() {
     document.getElementById('user-username').textContent = data.user.username ? `@${data.user.username}` : '';
     document.getElementById('user-avatar').textContent   = (fn[0] || '?').toUpperCase();
     updateSubscription(state.subscription);
+    if (data.user.channel_bonus_claimed) updateBonusCard(true);
 
     if (data.current_chat?.title) {
       document.getElementById('chat-title').textContent = data.current_chat.title;
@@ -951,6 +978,59 @@ async function sendMessage() {
   } finally {
     document.getElementById('send-btn').disabled = false;
   }
+}
+
+// ── Бонус за подписку на канал ────────────────────────────────────────────
+function updateBonusCard(claimed) {
+  const card = document.getElementById('bonus-card');
+  if (!card) return;
+  if (claimed) {
+    card.classList.add('claimed');
+    card.onclick = null;
+    card.querySelector('.bonus-title').textContent = '✅ Бонус получен';
+    card.querySelector('.bonus-sub').textContent   = '+5 запросов начислено на этот месяц';
+  }
+}
+
+async function claimBonus() {
+  if (!state.userId) { tg?.showAlert('Откройте приложение через Telegram'); return; }
+  const card = document.getElementById('bonus-card');
+  if (card?.classList.contains('claimed')) return;
+
+  // Сначала отправляем на канал
+  tg?.openLink('https://t.me/cloudeinJIN');
+
+  // Даём секунду, потом пробуем получить бонус
+  setTimeout(async () => {
+    try {
+      const res = await fetch(`${API}/api/bonus/channel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: state.userId }),
+      });
+
+      if (res.status === 409) {
+        updateBonusCard(true);
+        tg?.showAlert('Вы уже получили этот бонус ранее 😊');
+        return;
+      }
+      if (res.status === 403) {
+        tg?.showAlert('Сначала подпишись на канал @cloudeinJIN, затем нажми кнопку снова 👆');
+        return;
+      }
+      if (!res.ok) {
+        tg?.showAlert('Ошибка. Попробуй ещё раз позже.');
+        return;
+      }
+
+      const data = await res.json();
+      updateBonusCard(true);
+      if (data.subscription) updateSubscription(data.subscription);
+      tg?.showAlert('🎁 +5 запросов начислено! Они действуют до конца этого месяца.');
+    } catch(e) {
+      tg?.showAlert('Ошибка соединения. Проверь интернет.');
+    }
+  }, 1500);
 }
 
 // ── Оплата подписки через ЮКассу ──────────────────────────────────────────
