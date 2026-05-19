@@ -280,6 +280,45 @@ async def handle_text(message: Message):
     )
 
 
+# ── Периодические напоминания о рефералке ────────────────────────────────────
+async def ref_reminder_loop():
+    """Каждые 3 дня отправляет напоминание о реферальной программе."""
+    await asyncio.sleep(60)  # небольшая задержка при старте
+    while True:
+        try:
+            users = await db.get_users_for_ref_reminder(interval_days=3)
+            print(f"📢 Реферальная рассылка: {len(users)} пользователей")
+            for user in users:
+                uid  = user["user_id"]
+                name = user.get("first_name") or "друг"
+                try:
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+                        InlineKeyboardButton(
+                            text="👥 Получить реферальную ссылку",
+                            web_app=WebAppInfo(url=MINIAPP_URL)
+                        )
+                    ]])
+                    await bot.send_message(
+                        uid,
+                        f"👥 <b>{name}, зови друзей — получай Старт бесплатно!</b>\n\n"
+                        f"Поделись своей реферальной ссылкой. "
+                        f"Как только друг оформит любую платную подписку — "
+                        f"ты получишь ⚡ <b>Старт на 30 дней</b> в подарок.\n\n"
+                        f"Ссылку найдёшь в приложении → Профиль 👇",
+                        parse_mode="HTML",
+                        reply_markup=keyboard,
+                    )
+                    await db.mark_ref_reminder_sent(uid)
+                    await asyncio.sleep(0.1)  # небольшая пауза между сообщениями
+                except Exception as e:
+                    print(f"ref_reminder send error uid={uid}: {e}")
+        except Exception as e:
+            print(f"ref_reminder_loop error: {e}")
+
+        # Ждём 3 дня до следующей рассылки
+        await asyncio.sleep(3 * 24 * 60 * 60)
+
+
 # ── Запуск ────────────────────────────────────────────────────────────────────
 async def run_bot():
     global BOT_USERNAME
@@ -296,7 +335,7 @@ async def run_server():
     await server.serve()
 
 async def main():
-    await asyncio.gather(run_server(), run_bot())
+    await asyncio.gather(run_server(), run_bot(), ref_reminder_loop())
 
 if __name__ == "__main__":
     asyncio.run(main())
