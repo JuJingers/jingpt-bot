@@ -42,6 +42,30 @@ def buy_keyboard():
     ]])
 
 
+# ── Отложенное напоминание о бонусе ──────────────────────────────────────────
+async def _send_bonus_reminder(user_id: int, name: str):
+    """Через 5 минут напоминает о бонусе если пользователь ещё не получил его."""
+    await asyncio.sleep(300)  # 5 минут
+    user = await db.get_user(user_id)
+    if not user or user.get("channel_bonus_claimed") or user.get("is_blocked"):
+        return
+    try:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎁 Получить +5 запросов", web_app=WebAppInfo(url=MINIAPP_URL))],
+        ])
+        await bot.send_message(
+            user_id,
+            f"🎁 <b>{name}, не забудь про бонус!</b>\n\n"
+            f"Подпишись на наш канал <b>@cloudeinJIN</b> и получи "
+            f"<b>+5 бесплатных запросов</b> прямо сейчас.\n\n"
+            f"Открой приложение → Профиль → кнопка «+5 запросов» 👇",
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
+    except Exception:
+        pass
+
+
 # ── /start ────────────────────────────────────────────────────────────────────
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
@@ -65,14 +89,20 @@ async def cmd_start(message: Message):
         f"✍️ Тексты, код, переводы\n"
         f"🧠 Решение сложных задач\n"
         f"━━━━━━━━━━━━━━━\n\n"
-        f"🆓 Тариф: <b>Бесплатно</b> — 10 запросов в месяц\n\n"
+        f"🆓 Тариф: <b>Бесплатно</b> — 10 запросов в месяц\n"
+        f"🎁 <b>/bonus</b> — получи +5 запросов бесплатно!\n\n"
         f"📋 <b>Команды:</b>\n"
         f"/plan — моя подписка\n"
+        f"/bonus — бесплатные запросы\n"
         f"/help — тарифы и помощь\n\n"
         f"Нажми кнопку ниже и начни общение 👇",
         parse_mode="HTML",
         reply_markup=main_keyboard(),
     )
+
+    # Отложенное напоминание о бонусе (через 5 минут) если ещё не получил
+    if not user.get("channel_bonus_claimed"):
+        asyncio.create_task(_send_bonus_reminder(message.from_user.id, name))
 
 
 # ── /plan ─────────────────────────────────────────────────────────────────────
