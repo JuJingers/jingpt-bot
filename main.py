@@ -4,7 +4,7 @@ import httpx
 import uvicorn
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.client.session.aiohttp import AiohttpSession
 import anthropic
 
@@ -17,6 +17,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "sk-hub-9iH9yudgwhmrpsB1
 MINIAPP_URL       = os.environ.get("MINIAPP_URL", "https://example.up.railway.app")
 USE_PROXY         = os.environ.get("USE_PROXY", "false").lower() == "true"
 PORT              = int(os.environ.get("PORT", 8000))
+BOT_USERNAME      = ""   # заполняется при старте
 
 # ── Telegram бот ───────────────────────────────────────────────────────────────
 session = AiohttpSession(proxy="socks4://127.0.0.1:10808") if USE_PROXY else AiohttpSession()
@@ -68,7 +69,7 @@ async def _send_bonus_reminder(user_id: int, name: str):
 
 # ── /start ────────────────────────────────────────────────────────────────────
 @dp.message(CommandStart())
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, command: CommandObject):
     user = await db.get_or_create_user(
         user_id    = message.from_user.id,
         username   = message.from_user.username   or "",
@@ -78,6 +79,14 @@ async def cmd_start(message: Message):
     if user.get("is_blocked"):
         await message.answer("🚫 Ваш аккаунт заблокирован.")
         return
+
+    # Обработка реферальной ссылки (/start ref_XXXXXXXX)
+    args = command.args or ""
+    if args.startswith("ref_"):
+        code = args[4:]
+        referrer = await db.get_user_by_referral_code(code)
+        if referrer and referrer["user_id"] != message.from_user.id:
+            await db.set_referred_by(message.from_user.id, referrer["user_id"])
 
     name = message.from_user.first_name or "друг"
     await message.answer(
@@ -90,10 +99,12 @@ async def cmd_start(message: Message):
         f"🧠 Решение сложных задач\n"
         f"━━━━━━━━━━━━━━━\n\n"
         f"🆓 Тариф: <b>Бесплатно</b> — 10 запросов в месяц\n"
-        f"🎁 <b>/bonus</b> — получи +5 запросов бесплатно!\n\n"
+        f"🎁 <b>/bonus</b> — получи +5 запросов бесплатно!\n"
+        f"👥 <b>/ref</b> — пригласи друга и получи Старт!\n\n"
         f"📋 <b>Команды:</b>\n"
         f"/plan — моя подписка\n"
         f"/bonus — бесплатные запросы\n"
+        f"/ref — реферальная программа\n"
         f"/help — тарифы и помощь\n\n"
         f"Нажми кнопку ниже и начни общение 👇",
         parse_mode="HTML",
@@ -156,6 +167,7 @@ async def cmd_help(message: Message):
         "/start — главное меню\n"
         "/plan — моя подписка и лимиты\n"
         "/bonus — получить +5 запросов бесплатно\n"
+        "/ref — пригласить друга и получить Старт\n"
         "/help — эта справка\n\n"
         "<b>Возможности:</b>\n"
         "• Общение с AI через приложение\n"
@@ -169,6 +181,38 @@ async def cmd_help(message: Message):
         "По вопросам: @DadaYaKiruha",
         parse_mode="HTML",
         reply_markup=main_keyboard(),
+    )
+
+
+# ── /ref ──────────────────────────────────────────────────────────────────────
+@dp.message(Command("ref"))
+async def cmd_ref(message: Message):
+    user = await db.get_or_create_user(
+        user_id    = message.from_user.id,
+        username   = message.from_user.username   or "",
+        first_name = message.from_user.first_name or "",
+        last_name  = message.from_user.last_name  or "",
+    )
+    if user.get("is_blocked"):
+        await message.answer("🚫 Ваш аккаунт заблокирован.")
+        return
+
+    code  = await db.get_or_create_referral_code(message.from_user.id)
+    stats = await db.get_referral_stats(message.from_user.id)
+    link  = f"https://t.me/{BOT_USERNAME}?start=ref_{code}"
+
+    await message.answer(
+        f"👥 <b>Реферальная программа</b>\n\n"
+        f"Поделись ссылкой с другом. Когда он оформит любую платную подписку — "
+        f"ты получишь тариф ⚡ <b>Старт</b> на 30 дней бесплатно!\n\n"
+        f"🔗 Твоя ссылка:\n<code>{link}</code>\n\n"
+        f"📊 Статистика:\n"
+        f"• Перешли по ссылке: <b>{stats['total']}</b>\n"
+        f"• Купили подписку: <b>{stats['rewarded']}</b>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="📤 Поделиться", url=f"https://t.me/share/url?url={link}&text=Попробуй%20Jingpt%20—%20AI%20в%20Telegram!")
+        ]])
     )
 
 
@@ -238,8 +282,11 @@ async def handle_text(message: Message):
 
 # ── Запуск ────────────────────────────────────────────────────────────────────
 async def run_bot():
+    global BOT_USERNAME
     await db.init_db()
-    print("✅ Бот запущен!")
+    me = await bot.get_me()
+    BOT_USERNAME = me.username or ""
+    print(f"✅ Бот запущен! @{BOT_USERNAME}")
     await dp.start_polling(bot)
 
 async def run_server():

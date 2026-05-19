@@ -420,9 +420,41 @@ async def payment_webhook(request: Request):
                 f"Запросов в месяц: <b>{plan_info.get('limit', 0)}</b>\n\n"
                 f"Приятного общения с Jingpt! 🚀"
             ))
+            # Реферальная награда
+            referrer_id = await db.process_referral_reward(user_id)
+            if referrer_id:
+                referrer      = await db.get_user(referrer_id)
+                referrer_plan = referrer.get("subscription_type", "free") if referrer else "free"
+                if referrer_plan in ("free", "start"):
+                    msg = (
+                        f"🎉 <b>Ваш реферал оформил подписку!</b>\n\n"
+                        f"В благодарность вы получили тариф ⚡ <b>Старт</b> на 30 дней.\n"
+                        f"200 запросов в месяц — пользуйтесь! 🚀"
+                    )
+                else:
+                    msg = (
+                        f"🎉 <b>Ваш реферал оформил подписку!</b>\n\n"
+                        f"Спасибо, что приглашаете друзей в Jingpt 🙌\n"
+                        f"У вас уже активен более высокий тариф — продолжайте пользоваться!"
+                    )
+                asyncio.create_task(send_tg_notification(referrer_id, msg))
     except Exception as e:
         print(f"Webhook error: {e}")
     return {"ok": True}
+
+
+# ── Реферальная система ───────────────────────────────────────────────────────
+class ReferralInfoRequest(BaseModel):
+    user_id: int
+
+@app.post("/api/referral/info")
+async def referral_info(req: ReferralInfoRequest):
+    user = await db.get_user(req.user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    code  = await db.get_or_create_referral_code(req.user_id)
+    stats = await db.get_referral_stats(req.user_id)
+    return {"code": code, "stats": stats}
 
 
 # ── Бонус за подписку на канал ────────────────────────────────────────────────

@@ -1,4 +1,6 @@
 import os
+import secrets
+import string
 import aiosqlite
 from datetime import datetime, timedelta
 
@@ -38,6 +40,9 @@ async def init_db():
             ("requests_used",           "INTEGER DEFAULT 0"),
             ("requests_reset_at",       "TIMESTAMP DEFAULT NULL"),
             ("channel_bonus_claimed",   "INTEGER DEFAULT 0"),
+            ("referral_code",           "TEXT DEFAULT NULL"),
+            ("referred_by",             "INTEGER DEFAULT NULL"),
+            ("referral_reward_given",   "INTEGER DEFAULT 0"),
         ]:
             try:
                 await db.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
@@ -403,3 +408,111 @@ async def add_transaction(user_id: int, amount_rub: float,
             (user_id, amount_rub, requests_added, "", payment_id),
         )
         await db.commit()
+
+
+# ── Реферальная система ───────────────────────────────────────────────────────
+
+def _gen_code() -> str:
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(8))
+
+
+async def get_or_create_referral_code(user_id: int) -> str:
+    """Возвращает реферальный код пользователя, создаёт если нет."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT referral_code FROM users WHERE user_id = ?", (user_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if row and row["referral_code"]:
+            return row["referral_code"]
+        code = _gen_code()
+        await db.execute(
+            "UPDATE users SET referral_code = ? WHERE user_id = ?", (code, user_id)
+        )
+        await db.commit()
+        return code
+
+
+async def get_user_by_referral_code(code: str) -> dict | None:
+    """Находит пользователя по реферальному коду."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM users WHERE referral_code = ?", (code,)
+        ) as cur:
+            row = await cur.fetchone()
+        return dict(row) if row else None
+
+
+async def set_referred_by(user_id: int, referrer_id: int) -> bool:
+    """Записывает кто пригласил пользователя. Возвращает False если уже записан."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT referred_by FROM users WHERE user_id = ?", (user_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if not row or row["referred_by"]:
+            return False  # уже есть реферер или нет юзера
+        await db.execute(
+            "UPDATE users SET referred_by = ? WHERE user_id = ?", (referrer_id, user_id)
+        )
+        await db.commit()
+        return True
+
+
+async def get_referral_stats(user_id: int) -> dict:
+    """Возвращает статистику рефералов пользователя."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT COUNT(*) as c FROM users WHERE referred_by = ?", (user_id,)
+        ) as cur:
+            total = (await cur.fetchone())["c"]
+        async with db.execute(
+            "SELECT COUNT(*) as c FROM users WHERE referred_by = ? AND referral_reward_given = 1",
+            (user_id,)
+        ) as cur:
+            rewarded = (await cur.fetchone())["c"]
+    return {"total": total, "rewarded": rewarded}
+
+
+async def process_referral_reward(referred_user_id: int) -> int | None:
+    """
+    При первой платной подписке реферала — начисляет Старт рефереру.
+    Возвращает referrer_id если награда выдана, иначе None.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT referred_by, referral_reward_given FROM users WHERE user_id = ?",
+            (referred_user_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if not row or not row["referred_by"] or row["referral_reward_given"]:
+            return None
+        referrer_id = row["referred_by"]
+        # Помечаем чтобы не начислить повторно
+        await db.execute(
+            "UPDATE users SET referral_reward_given = 1 WHERE user_id = ?",
+            (referred_user_id,)
+        )
+        await db.commit()
+
+    # Получаем текущий план реферера
+    referrer = await get_user(referrer_id)
+    if not referrer:
+        return None
+    current_plan = referrer.get("subscription_type", "free") or "free"
+
+    if current_plan == "free":
+        # Активируем Старт
+        await activate_subscription(referrer_id, "start", "referral")
+    elif current_plan == "start":
+        # Продлеваем Старт ещё на 30 дней
+        await activate_subscription(referrer_id, "start", "referral_extend")
+    # Pro / Max — не даунгрейдим, просто отправим уведомление (в server.py)
+
+    return referrer_id
