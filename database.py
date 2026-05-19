@@ -103,6 +103,16 @@ async def init_db():
             except Exception:
                 pass
 
+        # Таблица для отслеживания отправленных новостей
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS news_sent (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                url        TEXT NOT NULL UNIQUE,
+                sent_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.commit()
+
 
 async def get_or_create_user(user_id: int, username: str = "",
                               first_name: str = "", last_name: str = "") -> dict:
@@ -555,4 +565,28 @@ async def mark_ref_reminder_sent(user_id: int):
             "UPDATE users SET last_ref_reminder_at = ? WHERE user_id = ?",
             (datetime.utcnow().isoformat(), user_id)
         )
+        await db.commit()
+
+
+# ── Новости ───────────────────────────────────────────────────────────────────
+
+async def is_news_url_sent(url: str) -> bool:
+    """Проверяет, была ли статья уже отправлена."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT 1 FROM news_sent WHERE url = ?", (url,)
+        ) as cur:
+            return await cur.fetchone() is not None
+
+
+async def mark_news_sent(urls: list[str]):
+    """Помечает статьи как отправленные."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        for url in urls:
+            try:
+                await db.execute(
+                    "INSERT OR IGNORE INTO news_sent (url) VALUES (?)", (url,)
+                )
+            except Exception:
+                pass
         await db.commit()
