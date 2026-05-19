@@ -43,6 +43,7 @@ async def init_db():
             ("referral_code",           "TEXT DEFAULT NULL"),
             ("referred_by",             "INTEGER DEFAULT NULL"),
             ("referral_reward_given",   "INTEGER DEFAULT 0"),
+            ("last_ref_reminder_at",    "TIMESTAMP DEFAULT NULL"),
         ]:
             try:
                 await db.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
@@ -516,3 +517,42 @@ async def process_referral_reward(referred_user_id: int) -> int | None:
     # Pro / Max — не даунгрейдим, просто отправим уведомление (в server.py)
 
     return referrer_id
+
+
+async def get_users_for_ref_reminder(interval_days: int = 3) -> list[dict]:
+    """
+    Возвращает пользователей которым пора напомнить о реферальной программе:
+    - не заблокированы
+    - ещё не привели ни одного платящего реферала
+    - не получали напоминание последние interval_days дней
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT u.user_id, u.first_name, u.last_ref_reminder_at
+            FROM users u
+            WHERE u.is_blocked = 0
+              AND (
+                u.last_ref_reminder_at IS NULL
+                OR (julianday('now') - julianday(u.last_ref_reminder_at)) >= ?
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM users r
+                WHERE r.referred_by = u.user_id
+                  AND r.referral_reward_given = 1
+              )
+            """,
+            (interval_days,)
+        ) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+
+async def mark_ref_reminder_sent(user_id: int):
+    """Обновляет время последнего напоминания о рефералке."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET last_ref_reminder_at = ? WHERE user_id = ?",
+            (datetime.utcnow().isoformat(), user_id)
+        )
+        await db.commit()
