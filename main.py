@@ -265,6 +265,18 @@ async def is_blocked(user_id: int) -> bool:
 # ── Текстовые сообщения ───────────────────────────────────────────────────────
 @dp.message(F.text)
 async def handle_text(message: Message):
+    text = message.text or ""
+
+    # Секретная команда дайджеста только для админа
+    if text.startswith("/digest") and message.from_user.id == ADMIN_ID:
+        await message.answer("🗞 Запускаю сбор новостей, подожди пару минут…")
+        asyncio.create_task(run_digest())
+        return
+
+    # Все остальные неизвестные команды — молча игнорируем
+    if text.startswith("/"):
+        return
+
     user = await db.get_or_create_user(
         user_id    = message.from_user.id,
         username   = message.from_user.username   or "",
