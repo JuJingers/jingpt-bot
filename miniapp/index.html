@@ -481,6 +481,43 @@
     }
     .ref-stat-val  { font-size: 22px; font-weight: 800; color: var(--accent); }
     .ref-stat-lbl  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Режимы ─────────────────────────────────────────────────────────────── */
+    .mode-bar {
+      display: flex; gap: 6px; padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg); overflow-x: auto; flex-shrink: 0;
+    }
+    .mode-bar::-webkit-scrollbar { display: none; }
+    .mode-btn {
+      flex-shrink: 0; padding: 5px 12px; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--bg-secondary);
+      color: var(--text-muted); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .mode-btn:active { transform: scale(.95); }
+
+    /* ── Поиск чатов ─────────────────────────────────────────────────────────── */
+    .chatlist-search { padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .chatlist-search input {
+      width: 100%; padding: 9px 14px; border-radius: 12px;
+      border: 1.5px solid var(--border); background: var(--input-bg);
+      color: var(--text); font-size: 14px; outline: none;
+      font-family: inherit; transition: border-color .2s;
+    }
+    .chatlist-search input:focus { border-color: var(--accent); }
+    .chatlist-search input::placeholder { color: var(--text-muted); }
+
+    /* ── Кнопки действий под сообщением ─────────────────────────────────────── */
+    .msg-actions { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+    .msg-action-btn {
+      padding: 3px 9px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-secondary);
+      color: var(--text-muted); font-size: 11px; cursor: pointer;
+      transition: all .15s; line-height: 1.6;
+    }
+    .msg-action-btn:active { background: var(--border); transform: scale(.95); }
   </style>
 </head>
 <body>
@@ -529,6 +566,9 @@
     <h2>Мои чаты</h2>
     <button class="new-chat-btn" onclick="newChat()" title="Новый чат">+</button>
   </div>
+  <div class="chatlist-search">
+    <input type="text" id="chat-search" placeholder="🔍 Поиск чатов…" oninput="filterChats(this.value)">
+  </div>
   <div class="chats-list" id="chats-list">
     <div class="chats-empty">Загрузка…</div>
   </div>
@@ -546,6 +586,13 @@
       <span id="plan-emoji">🆓</span>
       <span id="plan-remaining">—</span>
     </div>
+  </div>
+
+  <div class="mode-bar" id="mode-bar">
+    <button class="mode-btn active" data-mode="chat"        onclick="setMode('chat')">💬 Чат</button>
+    <button class="mode-btn"        data-mode="copywriter"  onclick="setMode('copywriter')">✍️ Текст</button>
+    <button class="mode-btn"        data-mode="code"        onclick="setMode('code')">💻 Код</button>
+    <button class="mode-btn"        data-mode="translate"   onclick="setMode('translate')">🌐 Перевод</button>
   </div>
 
   <div id="messages">
@@ -695,7 +742,7 @@ if (tg) { tg.ready(); tg.expand(); }
   if ((r*299 + g*587 + b*114) / 1000 < 128) document.body.classList.add('dark');
 })();
 
-let state = { userId: null, subscription: null, pendingFile: null, chatId: null, chats: [] };
+let state = { userId: null, subscription: null, pendingFile: null, chatId: null, chats: [], mode: 'chat' };
 
 // ── Сплэш ─────────────────────────────────────────────────────────────────
 function hideSplash() {
@@ -760,6 +807,14 @@ function showProfile() {
   showScreen('profile');
 }
 
+// ── Режимы ассистента ──────────────────────────────────────────────────────
+function setMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
 // ── Список чатов ───────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -788,13 +843,23 @@ function renderChatList(chats) {
   });
 }
 
+function filterChats(query) {
+  const q = query.trim().toLowerCase();
+  const filtered = q ? state.chats.filter(c => (c.title || '').toLowerCase().includes(q) || (c.last_msg || '').toLowerCase().includes(q)) : state.chats;
+  renderChatList(filtered);
+}
+
 function showChatList() {
+  const searchEl = document.getElementById('chat-search');
+  if (searchEl) searchEl.value = '';
   renderChatList(state.chats);
   showScreen('chatlist');
 }
 
 async function openChat(chat) {
   state.chatId = chat.id;
+  // Сбрасываем режим на "Чат" при переходе
+  setMode('chat');
   document.getElementById('chat-title').textContent = chat.title || 'Новый чат';
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '<div class="empty-chat" id="empty-placeholder"><div class="empty-icon">🤖</div><h2>Привет! Я Jingpt</h2><p>Задай любой вопрос или прикрепи файл — помогу разобраться.</p></div>';
@@ -943,6 +1008,7 @@ function renderMessage(role, text, filePreview = null, animate = true) {
     wrap.appendChild(prev);
   }
 
+  let bubbleText = text;
   if (text) {
     const bubble = document.createElement('div');
     if (role === 'assistant') {
@@ -960,8 +1026,62 @@ function renderMessage(role, text, filePreview = null, animate = true) {
   time.textContent = new Date().toLocaleTimeString('ru', { hour:'2-digit', minute:'2-digit' });
   wrap.appendChild(time);
 
+  // Кнопки действий под ответом ассистента
+  if (role === 'assistant' && text) {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    actions.innerHTML = `
+      <button class="msg-action-btn" onclick="quickAction('Сократи до 2-3 предложений: суть без лишнего')">📝 Короче</button>
+      <button class="msg-action-btn" onclick="quickAction('Расскажи подробнее, раскрой тему глубже')">📖 Подробнее</button>
+      <button class="msg-action-btn" onclick="copyText(${JSON.stringify(text)})">📋 Копировать</button>
+    `;
+    wrap.appendChild(actions);
+  }
+
   msgs.appendChild(wrap);
   msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Быстрые действия (Короче/Подробнее) ───────────────────────────────────
+async function quickAction(prompt) {
+  if (!state.userId) return;
+  const remaining = state.subscription?.remaining ?? 1;
+  if (remaining <= 0) { showProfile(); tg?.showAlert('Лимит запросов исчерпан.'); return; }
+
+  document.getElementById('send-btn').disabled = true;
+  showTyping();
+  try {
+    const res = await fetch(`${API}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: state.userId, chat_id: state.chatId, message: prompt, mode: state.mode }),
+    });
+    hideTyping();
+    if (!res.ok) { renderMessage('assistant', '⚠️ Ошибка. Попробуй ещё раз.'); return; }
+    const data = await res.json();
+    renderMessage('assistant', data.response);
+    if (data.subscription) updateSubscription(data.subscription);
+  } catch(e) {
+    hideTyping();
+    renderMessage('assistant', '⚠️ Нет соединения.');
+  } finally {
+    document.getElementById('send-btn').disabled = false;
+  }
+}
+
+// ── Копировать текст ───────────────────────────────────────────────────────
+function copyText(text) {
+  navigator.clipboard?.writeText(text).then(() => {
+    tg?.showAlert('Скопировано! ✅');
+  }).catch(() => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    tg?.showAlert('Скопировано! ✅');
+  });
 }
 
 // ── Typing ─────────────────────────────────────────────────────────────────
@@ -1004,7 +1124,7 @@ async function sendMessage() {
     const res = await fetch(`${API}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: state.userId, chat_id: state.chatId, message: text, file_data: file?.data || null, file_type: file?.type || null, file_name: file?.name || null }),
+      body: JSON.stringify({ user_id: state.userId, chat_id: state.chatId, message: text, file_data: file?.data || null, file_type: file?.type || null, file_name: file?.name || null, mode: state.mode }),
     });
     hideTyping();
     if (res.status === 402) { showProfile(); tg?.showAlert('Лимит исчерпан — оформите подписку, чтобы продолжить.'); return; }
